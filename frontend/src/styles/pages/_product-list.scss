@@ -1,0 +1,198 @@
+/* JewelerSelect Component Styles */
+.jeweler-select {
+  position: relative;
+  width: 100%;
+}
+
+.jeweler-select-trigger {
+  cursor: pointer;
+  border: 1px solid #e0e0e0;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.jeweler-select-trigger:hover:not(:disabled) {
+  border-color: #b0b0b0;
+}
+
+.jeweler-select-trigger:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+}
+
+.jeweler-select-trigger:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.jeweler-select-dropdown {
+  position: absolute;
+  width: 250px;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+  animation: jewelerSelectSlideDown 0.2s ease;
+}
+
+@keyframes jewelerSelectSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.jeweler-select-search {
+  position: relative;
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.jeweler-select-search input {
+  padding-left: 32px;
+  padding-right: 32px;
+  border: 1px solid #e0e0e0;
+}
+
+.jeweler-select-search input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.15rem rgba(0, 123, 255, 0.1);
+}
+
+.jeweler-select-search-icon {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  pointer-events: none;
+}
+
+.jeweler-select-clear {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.jeweler-select-clear:hover {
+  color: #333;
+}
+
+.jeweler-select-list {
+  overflow-y: auto;
+  max-height: 280px;
+}
+
+.jeweler-select-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.jeweler-select-list::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.jeweler-select-list::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.jeweler-select-list::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+.jeweler-select-option {
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  color: #333;
+  font-size: 14px;
+  .detail {
+    font-size: 10px;
+  }
+}
+
+.jeweler-select-option:hover {
+  background-color: #f8f9fa;
+}
+
+.jeweler-select-option--selected {
+  background-color: #e7f3ff;
+  color: #007bff;
+  font-weight: 500;
+}
+
+.jeweler-select-option--selected:hover {
+  background-color: #d0e9ff;
+}
+
+.jeweler-select-option--clear {
+  color: #dc3545;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.jeweler-select-option--clear:hover {
+  background-color: #fff5f5;
+}
+
+.jeweler-select-divider {
+  height: 1px;
+  background-color: #f0f0f0;
+  margin: 0;
+}
+
+.jeweler-select-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: #999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.jeweler-select-footer {
+  padding: 8px 16px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #f0f0f0;
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .jeweler-select-dropdown {
+    max-height: 320px;
+  }
+
+  .jeweler-select-list {
+    max-height: 220px;
+  }
+}

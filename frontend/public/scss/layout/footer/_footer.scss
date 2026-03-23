@@ -1,0 +1,15 @@
+.footer {
+  background-color: $body-bg;
+
+  .copyright {
+    padding: 0.9375rem;
+    p {
+      text-align: center;
+      margin: 0;
+    }
+
+    a {
+      color: $primary;
+    }
+  }
+}

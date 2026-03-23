@@ -1,0 +1,125 @@
+.product-master-page {
+  .product-master-actions {
+    gap: 8px;
+  }
+
+  .pm-summary-card {
+    border: 1px solid #dbe2ef;
+    border-radius: 14px;
+
+    small {
+      color: #6d7788;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      font-size: 11px;
+    }
+
+    h3 {
+      margin: 6px 0 0;
+      color: #172033;
+    }
+
+    &--one {
+      background: linear-gradient(130deg, #f4f7ff 0%, #edf6ff 100%);
+    }
+
+    &--two {
+      background: linear-gradient(130deg, #fff8ef 0%, #fff2dd 100%);
+    }
+
+    &--three {
+      background: linear-gradient(130deg, #f0fff8 0%, #e4ffef 100%);
+    }
+
+    &--four {
+      background: linear-gradient(130deg, #fff2f2 0%, #ffe6e6 100%);
+    }
+  }
+
+  .pm-catalog-card {
+    border: 1px solid #dce3ef;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 12px 24px -20px rgba(14, 32, 61, 0.6);
+    transition: transform 180ms ease, box-shadow 180ms ease;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 30px -18px rgba(14, 32, 61, 0.5);
+    }
+  }
+
+  .pm-catalog-image-wrap {
+    position: relative;
+    height: 170px;
+    background: #f5f7fb;
+  }
+
+  .pm-catalog-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .pm-catalog-chip {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    border-radius: 999px;
+    background: rgba(16, 24, 40, 0.82);
+    color: #fff;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .pm-catalog-content {
+    padding: 12px;
+  }
+
+  .pm-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid #8aa0c2;
+    margin: 0 4px;
+    background: transparent;
+    padding: 0;
+    &--active {
+      background: #355cfd;
+      border-color: #355cfd;
+    }
+  }
+
+  .product-qty-wrap,
+  .product-assign-wrap {
+    gap: 8px;
+
+    .form-control {
+      min-width: 96px;
+    }
+  }
+}
+
+@media (max-width: 991.98px) {
+  .product-master-page {
+    .product-master-actions {
+      margin-top: 10px;
+      width: 100%;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .product-qty-wrap,
+    .product-assign-wrap {
+      flex-direction: column;
+      align-items: stretch !important;
+
+      .form-control {
+        min-width: 100%;
+      }
+    }
+  }
+}

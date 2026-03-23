@@ -1,0 +1,274 @@
+.wizard {
+    position: relative;
+    overflow: visible;
+}
+
+.wizard>.steps {
+    width: 100%;
+    padding-left: 0;
+}
+
+.wizard>.steps ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column
+}
+
+.wizard>.steps li {
+    position: relative;
+    flex: 1;
+    text-align: center;
+}
+
+.wizard>.steps li.current a {
+    background-color: #007bff;
+    /* $primary color */
+    color: #ffffff;
+    /* $white color */
+}
+
+.wizard>.steps li.disabled a,
+.wizard>.steps li.done a {
+    background-color: #ffffff;
+    /* $white color */
+    color: #333333;
+    /* $heading color */
+}
+
+.wizard>.steps li a {
+    text-align: center;
+    display: block;
+    margin: 0;
+    border-radius: 0;
+    background-color: #ffffff;
+    /* $white color */
+    color: #333333;
+    /* $heading color */
+    padding: 1em 4px;
+    text-decoration: none;
+}
+
+.wizard>.steps li a:hover {
+    background-color: #ffffff;
+    /* $white color */
+    border-radius: 0;
+    color: #333333;
+    /* $heading color */
+}
+
+.wizard .content {
+    min-height: 35rem;
+    margin: 0;
+    background: transparent;
+}
+
+.wizard .content>.body {
+    background-color: transparent;
+    width: 100%;
+    height: 100%;
+    padding: 2rem;
+}
+
+.wizard .content .form-control {
+    border: 1px solid #cccccc;
+    /* $border color */
+}
+
+.wizard .content input.error {
+    position: relative;
+}
+
+.wizard .content label.error {
+    position: absolute;
+    top: 100%;
+    margin-left: 0;
+}
+
+.wizard .emial-setup label.mailclinet {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    width: 10rem;
+    height: 10rem;
+    border-radius: 50%;
+    cursor: pointer;
+    background-color: #eef5f9;
+}
+
+.wizard .emial-setup label.mailclinet .mail-icon {
+    font-size: 3rem;
+    margin-top: -1rem;
+}
+
+.wizard .emial-setup label.mailclinet .mail-text {
+    font-size: 1rem;
+    text-align: center;
+    margin-top: 0.5rem;
+}
+
+.wizard .skip-email {
+    margin-top: 6rem;
+}
+
+.wizard .skip-email p {
+    margin-bottom: 1rem;
+}
+
+.wizard .skip-email a {
+    color: #007bff;
+    /* $primary color */
+    text-decoration: underline;
+}
+
+.wizard>.actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    padding: 2rem;
+}
+
+.wizard .actions ul li {
+    display: inline-block;
+}
+
+.wizard .actions ul li:not(.disabled) a {
+    background-color: #007bff;
+    /* $primary color */
+    color: #ffffff;
+    /* $white color */
+}
+
+.wizard .actions ul li.disabled a {
+    color: #333333 !important;
+    background: #f7fafc !important;
+    border: 1px solid #eeeeee;
+}
+
+.wizard .actions ul li a {
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0.55em 2em;
+}
+
+.wizard .actions a,
+.wizard .actions a:hover,
+.wizard .actions a:active {
+    padding: 0.55em 2em;
+}
+
+.wizard .step-form-horizontal .steps li.done a {
+    background-color: #ffffff;
+    /* $white color */
+    color: #333333;
+    /* $dark color */
+}
+
+.wizard .step-form-horizontal .steps li.current a,
+.wizard .step-form-horizontal .steps li.disabled a {
+    background-color: transparent;
+    color: #007bff;
+    /* $primary color */
+}
+
+.wizard .step-form-horizontal .steps li.current a .number {
+    color: #007bff;
+    /* $primary color */
+    background: #ffffff;
+    /* $white color */
+    border: 2px solid #007bff;
+    /* $primary color */
+}
+
+.wizard .step-form-horizontal .steps li.disabled a .number {
+    color: #007bff;
+    /* $primary color */
+}
+
+.wizard .step-form-horizontal .steps li a .number {
+    position: absolute;
+    top: -100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #ffffff;
+    /* $white color */
+    border: 1px solid #cccccc;
+    /* $border color */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 2rem;
+    border-radius: 50px;
+    width: 2rem;
+}
+
+.wizard .step-form-horizontal .steps li:not(:last-child) {
+    z-index: 1;
+}
+
+.wizard .step-form-horizontal .steps li:not(:last-child)::after {
+    position: absolute;
+    width: 100%;
+    height: 0.375rem;
+    content: '';
+    left: 50%;
+    top: -2.1rem;
+    background-color: #007bff;
+    /* $primary color */
+    z-index: -1;
+}
+
+.wizard .step-form-horizontal .steps li.current::after,
+.wizard .step-form-horizontal .steps li~li::after {
+    background-color: #f3f3f3;
+}
+
+.wizard .step-form-horizontal .actions {
+    padding: 0;
+}
+
+@media (max-width: 1200px) {
+    .wizard>.steps {
+        padding-left: 0;
+    }
+}
+
+@media (max-width: 680px) {
+    .wizard>.steps li {
+        flex: 1;
+    }
+
+    .wizard>.steps {
+        padding-left: 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .wizard .step-form-horizontal .steps li a {
+        padding-left: 0;
+        padding-right: 0;
+        margin: 0;
+    }
+
+    .wizard .step-form-horizontal .steps li a .number {
+        font-size: 0.5rem;
+        padding-top: 0.9375rem;
+    }
+
+    .wizard .emial-setup label.mailclinet {
+        width: 7rem;
+        height: 7rem;
+    }
+
+    .wizard .emial-setup label.mailclinet .mail-icon {
+        font-size: 2rem;
+    }
+
+    .wizard .emial-setup label.mailclinet .mail-text {
+        font-size: 1.2rem;
+    }
+}

@@ -1,0 +1,293 @@
+/////////////////
+// Header
+/////////////////
+.header {
+  height: 4.5rem;
+  z-index: 1;
+  position: relative;
+  padding: 0rem;
+  background-color: $white;
+  z-index: 3;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  padding-left: 17.1875rem;
+  transition: all 0.2s ease;
+  .header-content {
+    height: 100%;
+    padding-left: 5.3125rem;
+    padding-right: 1.875rem;
+    align-items: center;
+    display: flex;
+    @include custommq($max: 575px) {
+      padding-left: 2.375rem;
+    }
+  }
+  .navbar {
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    .navbar-collapse {
+      height: 100%;
+      width: 100%;
+    }
+  }
+}
+
+////////////////////////
+// CSS Pulse Effect
+////////////////////////
+@mixin circle($circleSize) {
+  width: $circleSize;
+  height: $circleSize;
+  border-radius: $circleSize/2;
+}
+
+/* pulse in SVG */
+
+svg.pulse-svg {
+  overflow: visible;
+  .first-circle {
+    -webkit-transform: scale(0.3);
+    transform: scale(0.3);
+    -webkit-transform-origin: center center;
+    transform-origin: center center;
+    -webkit-animation: pulse-me 3s linear infinite;
+    animation: pulse-me 3s linear infinite;
+    fill: $primary;
+  }
+  .second-circle {
+    @extend .first-circle;
+    -webkit-animation-delay: 1s;
+    animation-delay: 1s;
+  }
+  .third-circle {
+    @extend .first-circle;
+    -webkit-animation-delay: 2s;
+    animation-delay: 2s;
+  }
+}
+
+/* pulse in CSS */
+
+.pulse-css {
+  @include circle(1rem);
+  border-radius: 3.5rem;
+  height: 0.4rem;
+  position: absolute;
+  background: $primary;
+  right: 5px;
+  top: 0.6rem;
+  width: 0.4rem;
+  &:after,
+  &:before {
+    content: '';
+    @include circle(1rem);
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: -0.2rem;
+    background-color: $primary;
+    margin: auto;
+    -webkit-transform: scale(0.3);
+    transform: scale(0.3);
+    -webkit-transform-origin: center center;
+    transform-origin: center center;
+    -webkit-animation: pulse-me 3s linear infinite;
+    animation: pulse-me 3s linear infinite;
+    @at-root [direction='rtl'] & {
+      left: auto;
+      right: -0.2rem;
+    }
+  }
+}
+
+@-webkit-keyframes pulse-me {
+  0% {
+    -webkit-transform: scale(0.3);
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.1;
+  }
+  70% {
+    opacity: 0.09;
+  }
+  100% {
+    -webkit-transform: scale(3);
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-me {
+  0% {
+    -webkit-transform: scale(0.3);
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.1;
+  }
+  70% {
+    opacity: 0.09;
+  }
+  100% {
+    -webkit-transform: scale(3);
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+[data-sidebar-style='full'],
+[data-sidebar-style='overlay'] {
+  .header {
+    width: 100%;
+    @include custommq($min: 1200px, $max: 1350px) {
+      width: 100%;
+      padding-left: 14.375rem;
+    }
+    @include respond('phone-land') {
+      width: 100%;
+      padding-left: 3.75rem;
+    }
+  }
+}
+
+[data-sidebar-style='mini'] {
+  .header {
+    width: 100%;
+    padding-left: 3.75rem;
+  }
+}
+
+[data-sidebar-style='compact'] {
+  .header {
+    width: 100%;
+    padding-left: 9.375rem;
+  }
+}
+
+[data-sidebar-style='modern'] {
+  .header {
+    width: 100%;
+    padding-left: 9.375rem;
+  }
+}
+
+[data-header-position='fixed'] {
+  .header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+  }
+  .quixnav {
+    margin-top: 0;
+  }
+}
+
+[data-sidebar-style='compact'][data-header-position='fixed'][data-container='boxed'][data-layout='vertical'] {
+  .header {
+    width: 1199px;
+  }
+}
+
+[data-sidebar-style='modern'] {
+  .header {
+    .header-content {
+      padding-left: 15px;
+      .navbar {
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: 0 15px;
+      }
+    }
+  }
+}
+.seller-level {
+  border-radius: 4px;
+  padding: 2px 4px;
+  position: relative;
+
+  &.level-1 {
+    color: #aaa;
+    background: #f0f0f0;
+
+    .seller-benefits {
+      color: #aaa;
+      background: #f0f0f0;
+    }
+  }
+
+  &.level-2 {
+    color: #000;
+    background: linear-gradient(45deg, #c0c0c0, #e0e0e0);
+
+    .seller-benefits {
+      color: #000;
+      background: linear-gradient(45deg, #c0c0c0, #e0e0e0);
+    }
+  }
+
+  &.level-3 {
+    color: #d4af37;
+    background: #fff8dc;
+    box-shadow: 0 0 4px #d4af37;
+
+    .seller-benefits {
+      color: #d4af37;
+      background: #fff8dc;
+      box-shadow: 0 0 4px #d4af37;
+    }
+  }
+
+  &.level-4 {
+    color: #8a2be2;
+    background: #f3e5ff;
+    font-style: italic;
+
+    .seller-benefits {
+      color: #8a2be2;
+      background: #f3e5ff;
+      font-style: italic;
+    }
+  }
+
+  &.level-5 {
+    color: #e60000;
+    background: #ffe6e6;
+    font-weight: 900;
+    border: 1px solid #e60000;
+
+    .seller-benefits {
+      color: #e60000;
+      background: #ffe6e6;
+      font-weight: 900;
+      border: 1px solid #e60000;
+    }
+  }
+
+  &:hover .seller-benefits {
+    margin-top: 10px;
+    position: absolute;
+    right: 0;
+    text-align: left;
+    display: grid;
+    gap: 5px;
+    opacity: 1;
+    transition: all 2s ease;
+    pointer-events: auto;
+  }
+
+  .seller-benefits {
+    opacity: 0;
+    pointer-events: none;
+    display: none;
+    transition: all 2s ease;
+    padding: 6px;
+    border-radius: 4px;
+    z-index: 10;
+    width: max-content;
+    min-width: 150px;
+  }
+}

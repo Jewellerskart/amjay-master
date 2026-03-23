@@ -1,0 +1,54 @@
+@use '../abstracts/variables' as *;
+@use '../abstracts/mixins' as *;
+
+.card-subtitle-note {
+  font-size: 11px;
+}
+
+.action-gap-sm {
+  gap: 8px;
+}
+
+.contact-admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.contact-admin-modal {
+  border: 1px solid $color-border;
+
+  &--create {
+    @include modal-shell(760px);
+  }
+
+  &--edit {
+    @include modal-shell(1200px);
+  }
+}
+
+.contact-admin-modal-body {
+  @include scroll-y;
+}
+
+.action-log-scroll {
+  max-height: 160px;
+  @include scroll-y;
+}
+
+.action-log-note {
+  font-size: 12px;
+}
+
+.product-browse-actions {
+  gap: 8px;
+}
+
+.product-browse-search {
+  min-width: 220px;
+}

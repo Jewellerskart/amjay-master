@@ -1,0 +1,243 @@
+import { useState, useCallback, useRef, useEffect } from 'react';
+import toast from 'react-hot-toast';
+import { useListProductsMutation, useGetProductFilterQuery } from '@api/apiHooks/product';
+import { FilterState, Product, Facets, Bounds, ProductListResponse, FacetKey } from './type';
+import { PAGINATION, DEFAULT_BOUNDS, INITIAL_FILTERS } from './variables';
+import { regexOr, parseBounds, validateFilterBounds } from './filter';
+
+import { Dispatch, SetStateAction } from 'react';
+
+interface UseProductMarketplaceProps {
+  includeAssignedClones?: boolean;
+  filters: FilterState;
+  setFilters: Dispatch<SetStateAction<FilterState>>;
+}
+
+export const useProductMarketplace = ({ includeAssignedClones = false, filters, setFilters }: UseProductMarketplaceProps) => {
+  const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [facets, setFacets] = useState<Facets>({
+    metals: [],
+    baseQualities: [],
+    diamonds: [],
+    category: [],
+    subCategory: [],
+  });
+  const [bounds, setBounds] = useState<Bounds>(DEFAULT_BOUNDS);
+  const hasInitialized = useRef(false);
+
+  const [listProducts, { isLoading }] = useListProductsMutation();
+
+  const { data: filterData, isLoading: filterLoading, isSuccess } = useGetProductFilterQuery();
+  useEffect(() => {
+    if (isSuccess && filterData) {
+      const filters = filterData.data.filters;
+      setFacets({
+        metals: filters.baseMetals || [],
+        baseQualities: filters.baseQualities || [],
+        diamonds: filters.baseStones || [],
+        category: filters.category || [],
+        subCategory: filters.subCategory || [],
+      });
+    }
+  }, [isSuccess, filterLoading]);
+  const fetchProducts = useCallback(
+    async (options: { reset?: boolean; overrideFilters?: FilterState } = {}) => {
+      const { reset = false, overrideFilters } = options;
+      const activeFilters = overrideFilters || filters;
+
+      try {
+        const currentPage = reset ? PAGINATION.DEFAULT_PAGE : page;
+
+        const response = (await listProducts({
+          page: Number(currentPage),
+          limit: PAGINATION.PAGE_SIZE,
+          search: activeFilters.search,
+          group: regexOr(activeFilters.category),
+          subCategory: regexOr(activeFilters.subCategory),
+          metals: regexOr(activeFilters.metals),
+          diamonds: regexOr(activeFilters.diamonds),
+          minWeight: activeFilters.minWeight,
+          maxWeight: activeFilters.maxWeight,
+          minPrice: activeFilters.minPrice,
+          maxPrice: activeFilters.maxPrice,
+          status: activeFilters.status || '',
+          usageType: activeFilters.usageType || '',
+          distributorId: activeFilters.distributorId || '',
+          holderRole: activeFilters.holderRole || '',
+          currentHolderUserId: activeFilters.currentHolderUserId || '',
+          startDate: activeFilters.startDate || '',
+          endDate: activeFilters.endDate || '',
+          sortDir: activeFilters.sortDir || 'desc',
+          includeAssignedClones,
+        }).unwrap()) as ProductListResponse;
+
+        const newProducts = Array.isArray(response?.data?.data) ? response.data.data : [];
+
+        setProducts((prev) => (reset ? newProducts : [...prev, ...newProducts]));
+
+        setHasMore(newProducts.length === PAGINATION.PAGE_SIZE);
+        setPage(Number(currentPage) + 1);
+        setTotalCount(Number(response?.data?.count || 0));
+
+        const newBounds = parseBounds(response?.data, bounds);
+        setBounds(newBounds);
+
+        if (reset) {
+          setFilters((prevFilters) => validateFilterBounds({ ...prevFilters, sortBy: activeFilters.sortBy, sortDir: activeFilters.sortDir }, newBounds));
+        }
+      } catch (error: any) {
+        const errorMessage = error?.data?.message || 'Failed to load products';
+        toast.error(errorMessage);
+        setHasMore(false);
+        if (reset) {
+          setProducts([]);
+        }
+      }
+    },
+    [filters, page, includeAssignedClones, listProducts, bounds, setFilters],
+  );
+
+  const loadMore = useCallback(() => {
+    if (!isLoading && hasMore) {
+      fetchProducts({ reset: false });
+    }
+  }, [fetchProducts, isLoading, hasMore]);
+
+  const applyFilters = useCallback(() => {
+    fetchProducts({ reset: true });
+  }, [fetchProducts]);
+
+  const resetFilters = useCallback(() => {
+    setFilters(INITIAL_FILTERS);
+    setPage(PAGINATION.DEFAULT_PAGE);
+    fetchProducts({ reset: true });
+  }, [fetchProducts, setFilters]);
+
+  const updateFilter = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const toggleFilterSelection = useCallback((filterKey: FacetKey, value: string) => {
+    setFilters((prev) => {
+      const current = prev[filterKey] || [];
+      const updated = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+      return { ...prev, [filterKey]: updated };
+    });
+  }, []);
+
+  const clearFilterSelection = useCallback((filterKey: FacetKey) => {
+    setFilters((prev) => ({ ...prev, [filterKey]: [] }));
+  }, []);
+
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+    fetchProducts({ reset: true });
+  }, [fetchProducts]);
+
+  return {
+    filters,
+    products,
+    hasMore,
+    totalCount,
+    facets,
+    bounds,
+    isLoading,
+    page,
+
+    fetchProducts,
+    loadMore,
+    applyFilters,
+    resetFilters,
+    updateFilter,
+    toggleFilterSelection,
+    clearFilterSelection,
+  };
+};
+
+import { useAcceptAssignedProductMutation } from '@api/apiHooks/product';
+import { useCreateInventoryRequestMutation } from '@api/apiHooks/inventory';
+
+interface UseProductActionsProps {
+  userId?: string;
+  onProductAccepted?: (productId: string) => void;
+}
+
+export const useProductActions = ({ userId, onProductAccepted }: UseProductActionsProps) => {
+  const [qtyByProductId, setQtyByProductId] = useState<Record<string, number>>({});
+
+  const [acceptAssignment, { isLoading: isAccepting }] = useAcceptAssignedProductMutation();
+  const [createRequest, { isLoading: isCreatingRequest }] = useCreateInventoryRequestMutation();
+
+  const updateQuantity = useCallback((productId: string, quantity: number) => {
+    setQtyByProductId((prev) => ({ ...prev, [productId]: Math.max(1, quantity) }));
+  }, []);
+
+  const getQuantity = useCallback(
+    (productId: string): number => {
+      return qtyByProductId[productId] || 1;
+    },
+    [qtyByProductId],
+  );
+
+  const handleInquiry = useCallback(
+    async (productId?: string) => {
+      if (!productId) {
+        toast.error('Invalid product');
+        return;
+      }
+
+      if (!userId) {
+        toast.error('Please login to request products');
+        return;
+      }
+
+      const quantity = getQuantity(productId);
+
+      try {
+        const payload = {
+          requiredProducts: quantity,
+          usageChoice: 'RENT',
+          preferredUsageNote: `Inquiry for product ${productId}`,
+          remark: productId,
+          styleCode: productId,
+        } as any;
+        await createRequest(payload).unwrap();
+
+        toast.success('Inquiry submitted successfully');
+      } catch (error: any) {
+        const errorMessage = error?.data?.message || 'Failed to submit inquiry';
+        toast.error(errorMessage);
+      }
+    },
+    [userId, getQuantity, createRequest],
+  );
+
+  const handleAccept = useCallback(
+    async (productId?: string, mode: 'rent' | 'outright' = 'rent') => {
+      if (!productId) {
+        toast.error('Invalid product');
+        return;
+      }
+
+      try {
+        await acceptAssignment({ id: productId, mode }).unwrap();
+
+        toast.success(`Product accepted as ${mode}`);
+
+        if (onProductAccepted) {
+          onProductAccepted(productId);
+        }
+      } catch (error: any) {
+        const errorMessage = error?.data?.message || 'Failed to accept assignment';
+        toast.error(errorMessage);
+      }
+    },
+    [acceptAssignment, onProductAccepted],
+  );
+
+  return { qtyByProductId, isAccepting, isCreatingRequest, updateQuantity, getQuantity, handleInquiry, handleAccept };
+};

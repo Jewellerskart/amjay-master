@@ -1,0 +1,18 @@
+[2026-03-18T05:08:41.685Z] {"event":"product.assigned.clone","productId":"69b8d483281014273fead314","assignedProductId":"69ba3359a524d0e3486f454a","toUserId":"69aea3011d8f8b294568e768","qty":1}
+[2026-03-18T05:08:56.942Z] {"event":"accept-assignment.invoice.payload","productId":"69ba3359a524d0e3486f454a","hasEmail":true,"hasPhone":true,"amount":41754.25,"holderId":"69aea3011d8f8b294568e768","performedBy":"69aea3011d8f8b294568e768"}
+[2026-03-18T05:08:56.943Z] {"event":"invoice.create.attempt","productId":"69ba3359a524d0e3486f454a","type":"purchase","amount":41754.25,"hasEmail":true,"hasPhone":true}
+[2026-03-20T04:53:41.611Z] "Worker 29604 died"
+[2026-03-20T12:09:59.841Z] "Worker 28964 died"
+[2026-03-20T12:09:59.859Z] "Worker 25012 died"
+[2026-03-20T12:09:59.875Z] "Worker 8748 died"
+[2026-03-20T12:09:59.893Z] "Worker 8760 died"
+[2026-03-20T12:09:59.909Z] "Worker 1256 died"
+[2026-03-20T12:09:59.929Z] "Worker 4076 died"
+[2026-03-20T12:09:59.945Z] "Worker 28524 died"
+[2026-03-23T09:04:18.960Z] {"event":"inventory.request.created","requestId":"69c10212f668876c638faca9","userId":"69aea3011d8f8b294568e768","usageChoice":"RENT"}
+[2026-03-23T09:40:37.121Z] {"event":"inventory.request.created","requestId":"69c10a95e79dcad8efaf5702","userId":"69aea3011d8f8b294568e768","usageChoice":"RENT"}
+[2026-03-23T09:42:24.238Z] {"event":"inventory.request.created","requestId":"69c10b00e79dcad8efaf570c","userId":"69aea3011d8f8b294568e768","usageChoice":"RENT"}
+[2026-03-23T09:44:20.485Z] {"event":"inventory.request.created","requestId":"69c10b74e79dcad8efaf574c","userId":"69aea3011d8f8b294568e768","usageChoice":"RENT"}
+[2026-03-23T09:47:09.200Z] {"event":"product.assigned.clone","productId":"69c0eab87ac717d77d7119a4","assignedProductId":"69c10c1de79dcad8efaf5798","toUserId":"69aea3011d8f8b294568e768","qty":1}
+[2026-03-23T09:47:09.236Z] {"event":"product.status.updated","productId":"69c0eab87ac717d77d7119a4","previousStatus":"AVAILABLE","nextStatus":"AVAILABLE"}
+[2026-03-23T09:47:09.309Z] {"event":"inventory.product.assigned","productId":"69c0eab87ac717d77d7119a4","jewelerId":"69aea3011d8f8b294568e768","usageChoice":"PURCHASE","invoiceId":""}

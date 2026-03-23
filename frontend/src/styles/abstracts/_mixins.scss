@@ -1,0 +1,15 @@
+@mixin focus-ring($color: rgba(0, 123, 255, 0.15)) {
+  box-shadow: 0 0 0 0.2rem $color;
+}
+
+@mixin modal-shell($max-width) {
+  width: 100%;
+  max-width: $max-width;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+
+@mixin scroll-y {
+  overflow-y: auto;
+}
