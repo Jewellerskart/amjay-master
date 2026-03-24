@@ -73,22 +73,7 @@ export const useMyInventory = (user?: UserShape, view: 'accepted' | 'pending' = 
 
         const rows = Array.isArray(response?.data?.data) ? response.data.data : [];
 
-        setItems(
-          rows
-            .map((row: any) => ({
-              _id: `${row?._id || row?.id || ''}`,
-              jewelCode: `${row?.product?.jewelCode || ''}`,
-              styleCode: `${row?.product?.styleCode || ''}`,
-              qty: Number(row?.product?.qty ?? row?.qty ?? 0),
-              image: row?.image || row?.media?.[0],
-              holderName: row?.currentHolder?.name || row?.currentHolder?.businessName || '',
-              status: row?.status || row?.product?.status || row?.orderStatus || '',
-              usageType: row?.usage?.type || '',
-              origin: row?._origin,
-              createdAt: row?.createdAt,
-            }))
-            .filter((row: InventoryRow) => row._id),
-        );
+        setItems(rows.map((row: any) => row).filter((row: InventoryRow) => row._id));
 
         setTotal(Number(response?.data?.count || rows.length || 0));
       } catch (error: any) {

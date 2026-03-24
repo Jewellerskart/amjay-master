@@ -14,6 +14,7 @@ import {
   FRONTEND_DOCS_URL,
   INVOICE_PAGE_URL,
   INVENTORY_LIST_URL,
+  INVENTORY_PENDING_URL,
   INVENTORY_REQUESTS_URL,
   NOTIFICATION_URL,
   ONBOARDING_PAGE_URL,
@@ -49,6 +50,7 @@ export const invoicePageUrl = INVOICE_PAGE_URL;
 export const posSaleUrl = POS_SALE_PAGE_URL;
 export const inventoryRequestsUrl = INVENTORY_REQUESTS_URL;
 export const inventoryListUrl = INVENTORY_LIST_URL;
+export const inventoryPendingUrl = INVENTORY_PENDING_URL;
 export const rateChartsUrl = RATE_CHARTS_URL;
 
 export const whatsappLink = WHATSAPP_LINK;

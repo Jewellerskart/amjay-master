@@ -408,6 +408,10 @@ export const listInventory = async (
             { $multiply: [{ $ifNull: ['$weight.pureWeight', 0] }, goldRate] },
           ],
         },
+      },
+    },
+    {
+      $addFields: {
         finalPrice: { $add: [{ $ifNull: ['$cost.totalCost', 0] }, { $ifNull: ['$liveMetal', 0] }] },
       },
     },

@@ -2,23 +2,30 @@ import { IndNumberFormat } from '@utils/formateDate';
 import { Link } from 'react-router-dom';
 import { ProductCardProps } from '../utils/type';
 
-export const ProductCard = ({ id, name, metal, diamond, weight, price, liveRate, image, distributor, onInquiry, hideOwnership, detailHref, quantity = 1, onQuantityChange }: ProductCardProps) => {
-  const hasLiveRate = liveRate !== undefined && liveRate !== null && !Number.isNaN(Number(liveRate));
-  const hasPrice = price !== undefined && price !== null && price !== '';
-  const formattedLiveRate = hasLiveRate ? IndNumberFormat(liveRate as number) : null;
-  const formattedPrice = hasPrice ? IndNumberFormat(price as number | string) : null;
-
+export const ProductCard = ({ product, onInquiry, hideOwnership, detailHref, onQuantityChange }: ProductCardProps) => {
+  const id = product._id;
+  const name = product.product?.jewelCode || 'Product';
+  const metal = product.material?.baseMetal || '';
+  const diamond = product.diamond;
+  const weight = product.weight?.grossWeight ? `${product.weight.grossWeight} g` : '';
+  const price = product.finalPrice;
+  const distributor = product.uploadedBy?.businessName || 'Owner';
+  const image = product.image || product.media?.[0];
+  const quantity = 1;
+  const formattedPrice = IndNumberFormat(price as number | string) || 0;
   return (
     <div className="product-card  card border-0 shadow-sm">
       <div className="product-card__image-wrap">
         {image ? <img src={image} alt={name} className="product-card__image" loading="lazy" /> : <div className="product-card__image-fallback">No image</div>}
-        {formattedPrice ? <span className="product-card__price-pill product-card__price-pill--live"> Rs. {formattedPrice}</span> : null}
+        <span className="product-card__price-pill product-card__price-pill--live d-flex">
+          <span className="live-dot d-flex" aria-hidden="true" />₹ {formattedPrice}
+        </span>
         {weight ? <span className="product-card__weight-pill">{weight}</span> : null}
       </div>
 
       <div className="card-body product-card__body">
         <div className="d-flex align-items-start justify-content-between mb-2">
-          <div className="product-card__title">{name}</div>
+          <div className="product-card__title">Code : {name}</div>
           {detailHref ? (
             <Link className="product-card__link" to={detailHref} aria-label={`Open details for ${name}`}>
               <i className="fa fa-arrow-right" aria-hidden="true" />
@@ -27,12 +34,7 @@ export const ProductCard = ({ id, name, metal, diamond, weight, price, liveRate,
         </div>
 
         <div className="product-card__chips">
-          {formattedLiveRate ? (
-            <span className="product-chip product-chip--live">
-              <span className="live-dot" aria-hidden="true" />
-              Rs. {formattedLiveRate}
-            </span>
-          ) : null}
+          <span className="product-chip product-chip--live"> {product.product?.styleCode}</span>
           <span className="product-chip">{metal || 'Metal N/A'}</span>
           {diamond ? (
             <span className="product-chip product-chip--muted">

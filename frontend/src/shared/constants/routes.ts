@@ -76,3 +76,4 @@ export const TICKET_QUEUE_URL = '/tickets';
 export const POS_SALE_PAGE_URL = '/pos';
 export const INVENTORY_REQUESTS_URL = '/inventory/requests';
 export const INVENTORY_LIST_URL = '/inventory/list';
+export const INVENTORY_PENDING_URL = '/inventory/pending';

@@ -414,16 +414,10 @@ export const assignProductHolder = async (
     firstName: name.split(' ')[0] || name,
     lastName: name.split(' ').slice(1).join(' '),
     email: '',
-    businessName: `${args.toBusinessName || ''}`.trim(),
+    businessName: `${args.toBusinessName || ''}`,
   }
 
-  const user = {
-    _id: args.assignedByUserId,
-    role: args.assignedByRole,
-    firstName: args.assignedByName,
-    lastName: '',
-    email: '',
-  }
+  const user = { _id: args.assignedByUserId, role: args.assignedByRole, firstName: args.assignedByName, lastName: '', email: '' }
   const param = { productId: args.productId, jeweler, user, quantity: qtyRequested, remark: args.remark }
   const result = await cloneAndAssignProduct(param, session)
 
@@ -585,19 +579,16 @@ export const acceptAssignedProduct = async (
       error.status_code = 400
       throw error
     }
-
-    invoice = await createInvoice(
-      {
-        productId,
-        userEmail,
-        userPhone,
-        amount,
-        type: 'purchase',
-        requestedByEmail: args.performedByEmail || args.performedByName || '',
-        status: 'PURCHASE_PENDING_PAYMENT' as InvoiceStatus,
-      },
-      session
-    )
+    const payload: any = {
+      productId,
+      userEmail,
+      userPhone,
+      amount,
+      type: 'purchase',
+      requestedByEmail: args.performedByEmail || args.performedByName || '',
+      status: 'PURCHASE_PENDING_PAYMENT' as InvoiceStatus,
+    }
+    invoice = await createInvoice(payload, session)
   }
 
   await assigned.save({ session })

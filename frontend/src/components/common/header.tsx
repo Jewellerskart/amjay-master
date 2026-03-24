@@ -17,6 +17,8 @@ import {
   posSaleUrl,
   invoicePageUrl,
   ticketQueueUrl,
+  inventoryListUrl,
+  inventoryPendingUrl,
   inventoryRequestsUrl,
   rateChartsUrl,
 } from '@variable';
@@ -247,8 +249,11 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                 </button>
                 {openMenu === 'inventory' && (
                   <div className="header-dropdown-menu" onClick={(event) => event.stopPropagation()}>
-                    <NavLink to="/inventory/list" className="header-dropdown-item">
-                      Inventory
+                    <NavLink to={inventoryListUrl} className="header-dropdown-item">
+                      My Inventory
+                    </NavLink>
+                    <NavLink to={inventoryPendingUrl} className="header-dropdown-item">
+                      Pending Assignments
                     </NavLink>
                     {(isAdminUser || isDistributor) && (
                       <NavLink to={inventoryRequestsUrl} className="header-dropdown-item">
@@ -477,6 +482,12 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                   </button>
                   {mobileOpenSection === 'inventory' && (
                     <div className="mobile-submenu">
+                      <NavLink to={inventoryListUrl} className="mobile-nav-link">
+                        My Inventory
+                      </NavLink>
+                      <NavLink to={inventoryPendingUrl} className="mobile-nav-link">
+                        Pending Assignments
+                      </NavLink>
                       {(isAdminUser || isDistributor) && (
                         <NavLink to={inventoryRequestsUrl} className="mobile-nav-link">
                           Requests

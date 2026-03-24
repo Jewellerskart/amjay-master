@@ -17,6 +17,7 @@ import {
   posSaleUrl,
   inventoryRequestsUrl,
   inventoryListUrl,
+  inventoryPendingUrl,
   rateChartsUrl,
 } from '@variable';
 import { Suspense, lazy } from 'react';
@@ -50,6 +51,7 @@ const SalePage = lazyNamed(() => import('@modules/pos/pages/SalePage'), 'SalePag
 const InventoryRequestsPage = lazyNamed(() => import('@modules/inventory/pages/InventoryRequestsPage'), 'InventoryRequestsPage');
 const MyRequestsPage = lazyNamed(() => import('@modules/inventory/pages/MyRequestsPage'), 'MyRequestsPage');
 const InventoryListPage = lazyNamed(() => import('@modules/inventory/pages/InventoryListPage'), 'InventoryListPage');
+const PendingAssignmentsPage = lazyNamed(() => import('@modules/inventory/pages/InventoryListPage'), 'PendingAssignmentsPage');
 const RateChartsPage = lazyNamed(() => import('@modules/products/pages/RateChartsPage'), 'RateChartsPage');
 const PageNotFound = lazyNamed(() => import('@common/error/404'), 'PageNotFound');
 
@@ -77,6 +79,7 @@ export const privateRoutes = [
   { path: commissionControlUrl, element: suspense(<CommissionControlPage />) },
   { path: inventoryRequestsUrl, element: suspense(<InventoryRequestsPage />) },
   { path: inventoryListUrl, element: suspense(<InventoryListPage />) },
+  { path: inventoryPendingUrl, element: suspense(<PendingAssignmentsPage />) },
   { path: '/inventory/my-requests', element: suspense(<MyRequestsPage />) },
   { path: rateChartsUrl, element: suspense(<RateChartsPage />) },
   { path: walletPageUrl, element: suspense(<WalletPage />) },

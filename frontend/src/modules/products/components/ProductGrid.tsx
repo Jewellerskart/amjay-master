@@ -3,7 +3,7 @@ import { ProductGridProps } from '../utils/type';
 import { ProductCard } from './ProductCard';
 import { ProductDetailUrl } from '@variable';
 
-export const ProductGrid: React.FC<ProductGridProps> = ({ products, isJewelerRole, qtyByProductId, isLoading, hasMore, onQuantityChange, onInquiry, onLoadMore }) => {
+export const ProductGrid: React.FC<ProductGridProps> = ({ products, isJewelerRole, isLoading, hasMore, onQuantityChange, onInquiry, onLoadMore }) => {
   const hideOwnership = isJewelerRole;
 
   if (products.length === 0 && !isLoading) {
@@ -23,28 +23,12 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ products, isJewelerRol
 
         <div className="row g-3">
           {products.map((product) => {
-            const [finalPrice, liveMetalRate] = [product.finalPrice, product.liveMetal];
             const jewelCode = product?.product?.jewelCode ? encodeURIComponent(product.product.jewelCode) : '';
             const detailHref = jewelCode ? ProductDetailUrl.replace(':jewelCode', jewelCode) : undefined;
 
             return (
               <div key={product._id} className="col-12 col-sm-6 col-md-4 mt-2">
-                <ProductCard
-                  id={product._id}
-                  name={product.product?.jewelCode || 'Product'}
-                  metal={product.material?.baseMetal || ''}
-                  diamond={product.diamond}
-                  weight={product.weight?.grossWeight ? `${product.weight.grossWeight} g` : ''}
-                  price={finalPrice}
-                  liveRate={liveMetalRate}
-                  distributor={product.uploadedBy?.businessName || 'Owner'}
-                  hideOwnership={hideOwnership}
-                  image={product.image || product.media?.[0]}
-                  quantity={qtyByProductId[product._id] || 1}
-                  onQuantityChange={(val) => onQuantityChange(product._id, val)}
-                  onInquiry={() => onInquiry(product?.product?.styleCode || '')}
-                  detailHref={detailHref}
-                />
+                <ProductCard product={product} hideOwnership={hideOwnership} onQuantityChange={(val) => onQuantityChange(product._id, val)} onInquiry={() => onInquiry(product?.product?.styleCode || '')} detailHref={detailHref} />
               </div>
             );
           })}

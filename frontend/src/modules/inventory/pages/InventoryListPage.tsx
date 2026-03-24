@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom';
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Header } from '@common/header';
 import { useAuthSellerLogin } from '@hooks/sellerAuth';
 import { ProductListUrl } from '@variable';
 import { useMyInventory } from '../hooks/useMyInventory';
 import { UrlTablePagination } from '@common/TablePagination';
 import { useUrlParams } from '@hooks/useUrlParams';
+import { IndNumberFormat } from '@utils/formateDate';
 
-type TabType = 'accepted' | 'pending';
 type AcceptMode = 'rent' | 'outright';
 type InventoryParam = {
   item: any;
@@ -22,9 +22,10 @@ type InventoryParam = {
   onAccept: () => void;
   onReject: () => void;
 };
+
 const EmptyState = ({ message }: { message: string }) => (
   <tr>
-    <td colSpan={8} className="text-muted py-4">
+    <td colSpan={9} className="text-muted py-4">
       {message}
     </td>
   </tr>
@@ -35,13 +36,13 @@ const InventoryRow = ({ item, index, page, limit, actionable, selectedMode, isAc
   return (
     <tr>
       <td>{rowNumber}</td>
-      <td>{item.jewelCode || '-'}</td>
-      <td>{item.styleCode || '-'}</td>
-      <td>{item.finalPrice}</td>
+      <td>{item.product.jewelCode || '-'}</td>
+      <td>{item.product.styleCode || '-'}</td>
+      <td>{IndNumberFormat(item.finalPrice)}</td>
       <td className="p-0">{item.image ? <img src={item.image} alt={item.jewelCode || 'Product'} width={50} height={50} loading="lazy" className="object-fit-cover" /> : '-'}</td>
       <td>{item.qty || 0}</td>
       <td className="text-capitalize">{item.status?.toLowerCase() || '-'}</td>
-      <td className="text-capitalize">{item.usageType?.toLowerCase() || '-'}</td>
+      <td className="text-capitalize">{item?.usage?.type?.toLowerCase() || '-'}</td>
       <td>
         {actionable ? (
           <div className="d-flex flex-wrap align-items-center justify-content-center gap-2">
@@ -64,9 +65,16 @@ const InventoryRow = ({ item, index, page, limit, actionable, selectedMode, isAc
   );
 };
 
-export const InventoryListPage = () => {
+type InventoryPageProps = {
+  view: 'accepted' | 'pending';
+  pageTitle: string;
+  description: string;
+  heroTitle: string;
+  heroDescription: string;
+};
+
+const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescription }: InventoryPageProps) => {
   const { data: user } = useAuthSellerLogin();
-  const [activeTab, setActiveTab] = useState<TabType>('accepted');
   const { page, limit, setSearchParams } = useUrlParams();
 
   const setUrlPage = (next: number) =>
@@ -84,7 +92,6 @@ export const InventoryListPage = () => {
       return params;
     });
 
-  // Memoize role calculation
   const isAdminLike = useMemo(() => {
     const role = `${user?.role || ''}`.toLowerCase();
     return ['admin', 'super-admin', 'distributor'].includes(role);
@@ -92,25 +99,15 @@ export const InventoryListPage = () => {
 
   const {
     list: { items, total, isLoading },
-    pagination: { setPage, setLimit },
+    pagination: { setPage },
     searchState: { search, setSearch, loadInventory },
     responses: { acceptModeById, setAcceptModeById, onAccept, onReject, isAccepting, isRejecting, canRespond },
-  } = useMyInventory(user, activeTab, {
+  } = useMyInventory(user, view, {
     page,
     limit,
     onPageChange: setUrlPage,
     onLimitChange: setUrlLimit,
   });
-
-  // Memoized callbacks to prevent re-renders
-  const handleTabChange = useCallback(
-    (tab: TabType) => {
-      setActiveTab(tab);
-      setPage(1);
-      loadInventory({ page: 1 });
-    },
-    [setPage, loadInventory],
-  );
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
@@ -127,16 +124,6 @@ export const InventoryListPage = () => {
     loadInventory({ page: 1, search: '' });
   }, [setSearch, setPage, loadInventory]);
 
-  const handleLimitChange = useCallback(
-    (newLimit: number) => {
-      setLimit(newLimit);
-      setPage(1);
-      loadInventory({ page: 1, limit: newLimit });
-    },
-    [setLimit, setPage, loadInventory],
-  );
-
-  // Memoize row data to prevent unnecessary recalculations
   const rowsData = useMemo(
     () =>
       items.map((item) => ({
@@ -146,38 +133,16 @@ export const InventoryListPage = () => {
       })),
     [items, acceptModeById, canRespond],
   );
-
-  const tabConfig = useMemo(
-    () => [
-      {
-        key: 'accepted' as const,
-        label: 'Accepted (Outright / Rented)',
-        title: 'My Inventory',
-        description: 'Showing only products you accepted as outright or rented.',
-      },
-      {
-        key: 'pending' as const,
-        label: 'Pending Acceptance',
-        title: 'Pending Assignments',
-        description: 'Accept or reject products newly assigned to you.',
-      },
-    ],
-    [],
-  );
-
-  const currentTabConfig = tabConfig.find((t) => t.key === activeTab) || tabConfig[0];
-
   return (
     <>
       <Header />
       <div className="content-body">
         <div className="container-fluid">
-          {/* Page Header */}
           <div className="row page-titles mx-0 mb-3">
             <div className="col-sm-12 p-md-0 d-flex justify-content-between align-items-center flex-wrap gap-3">
               <div className="welcome-text">
-                <h4 className="mb-1">Inventory</h4>
-                <p className="text-muted mb-0">Accepted items (Outright / Rented) plus a pending tab for new assignments.</p>
+                <h4 className="mb-1">{heroTitle}</h4>
+                <p className="text-muted mb-0">{heroDescription}</p>
               </div>
               {isAdminLike && (
                 <Link to={ProductListUrl} className="btn btn-outline-secondary">
@@ -187,37 +152,16 @@ export const InventoryListPage = () => {
             </div>
           </div>
 
-          {/* Main Card */}
           <div className="card">
-            {/* Tabs */}
-            <div className="card-header border-0 bg-transparent px-4 pt-4 pb-0">
-              <ul className="nav nav-tabs" role="tablist">
-                {tabConfig.map((tab) => (
-                  <li className="nav-item" key={tab.key} role="presentation">
-                    <button className={`nav-link ${activeTab === tab.key ? 'active' : ''}`} onClick={() => handleTabChange(tab.key)} type="button" role="tab" aria-selected={activeTab === tab.key} aria-label={tab.label}>
-                      {tab.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Card Header with Search */}
             <div className="card-header d-flex flex-wrap align-items-end justify-content-between gap-3">
               <div>
-                <h5 className="mb-1">{currentTabConfig.title}</h5>
-                <p className="text-muted mb-0">{currentTabConfig.description}</p>
+                <h5 className="mb-1">{pageTitle}</h5>
+                <p className="text-muted mb-0">{description}</p>
               </div>
 
               <form className="d-flex flex-wrap align-items-center gap-2" onSubmit={handleSearch}>
                 <input type="search" className="form-control" placeholder="Search by jewel or style code" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minWidth: 220 }} aria-label="Search inventory" />
-                <select className="form-control" value={limit} onChange={(e) => handleLimitChange(Number(e.target.value))} aria-label="Rows per page">
-                  {[10, 25, 50, 100].map((size) => (
-                    <option key={size} value={size}>
-                      {size} rows
-                    </option>
-                  ))}
-                </select>
+
                 <button type="submit" className="btn btn-outline-primary" disabled={isLoading}>
                   {isLoading ? 'Searching...' : 'Search'}
                 </button>
@@ -227,7 +171,6 @@ export const InventoryListPage = () => {
               </form>
             </div>
 
-            {/* Table */}
             <div className="card-body">
               <div className="table-responsive table-ui-responsive">
                 <table className="table table-ui mb-0 text-center" aria-label="Inventory table">
@@ -281,5 +224,13 @@ export const InventoryListPage = () => {
     </>
   );
 };
+
+export const InventoryListPage = () => (
+  <InventoryPage view="accepted" pageTitle="My Inventory" description="Showing only products you accepted as outright or rented." heroTitle="My Inventory" heroDescription="Items you already accepted as outright or rented." />
+);
+
+export const PendingAssignmentsPage = () => (
+  <InventoryPage view="pending" pageTitle="Pending Assignments" description="Accept or reject products newly assigned to you." heroTitle="Pending Assignments" heroDescription="Review products assigned to you and respond." />
+);
 
 export default InventoryListPage;

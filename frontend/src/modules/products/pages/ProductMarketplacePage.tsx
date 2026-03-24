@@ -1,15 +1,11 @@
-import React, { FormEvent, useCallback, useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
+import React, { useCallback } from 'react';
 import { useAuthSellerLogin } from '@hooks/sellerAuth';
 import { Header } from '@common/header';
 import { useProductMarketplace, useProductActions } from '../utils/hook';
-import { useListProductsMutation } from '@api/apiHooks/product';
 import { FilterPanel } from '../components/FilterPanel';
 import { ProductGrid } from '../components/ProductGrid';
 import { ActiveFilters } from '../components/ActiveFilters';
-import { Product, ProductListResponse, FilterState } from '../utils/type';
-import { ProductListUrl } from '@variable';
+import { FilterState } from '../utils/type';
 import { useProductFilters } from '../hooks/useProductFilters';
 
 export const ProductMarketplacePage: React.FC = () => {
@@ -24,57 +20,12 @@ export const ProductMarketplacePage: React.FC = () => {
     setFilters,
   });
 
-  const [assignProducts, setAssignProducts] = useState<Product[]>([]);
-  const [assignSearch, setAssignSearch] = useState('');
-  const [fetchAssignProducts, { isLoading: isLoadingAssign }] = useListProductsMutation();
-
   const { qtyByProductId, isAccepting, updateQuantity, handleInquiry } = useProductActions({
     userId: user?._id,
     onProductAccepted: () => {
       // handled via state update in hook
     },
   });
-
-  const loadAssignList = useCallback(
-    async (searchTerm?: string) => {
-      try {
-        const response = (await fetchAssignProducts({
-          page: 1,
-          limit: 12,
-          search: searchTerm?.trim() || undefined,
-        }).unwrap()) as ProductListResponse;
-        const items = Array.isArray(response?.data?.data) ? response.data.data : [];
-        setAssignProducts(items);
-      } catch (error: any) {
-        const errorMessage = error?.data?.message || 'Failed to load assign products';
-        toast.error(errorMessage);
-        setAssignProducts([]);
-      }
-    },
-    [fetchAssignProducts],
-  );
-
-  useEffect(() => {
-    if (!isJewelerRole) {
-      setAssignProducts([]);
-      return;
-    }
-
-    void loadAssignList('');
-  }, [isJewelerRole, loadAssignList]);
-
-  const onAssignSearchSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      void loadAssignList(assignSearch);
-    },
-    [assignSearch, loadAssignList],
-  );
-
-  const onResetAssignSearch = useCallback(() => {
-    setAssignSearch('');
-    void loadAssignList('');
-  }, [loadAssignList]);
 
   const handleSortChange = useCallback(
     (value: string) => {
@@ -134,53 +85,6 @@ export const ProductMarketplacePage: React.FC = () => {
               onInquiry={handleInquiry}
               onLoadMore={loadMore}
             />
-
-            {isJewelerRole && (
-              <div className="mt-5">
-                <div className="card border-0 shadow-sm">
-                  <div className="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-3">
-                    <div>
-                      <h5 className="mb-1">Assign Product</h5>
-                      <small className="text-muted">Search catalog items to request assignment.</small>
-                    </div>
-                    <div className="d-flex flex-wrap align-items-center gap-3">
-                      <form className="d-flex align-items-center gap-2" onSubmit={onAssignSearchSubmit}>
-                        <input type="search" className="form-control form-control-sm" placeholder="Search products" value={assignSearch} onChange={(e) => setAssignSearch(e.target.value)} style={{ minWidth: 220 }} />
-                        <button className="btn btn-primary btn-sm" type="submit" disabled={isLoadingAssign}>
-                          {isLoadingAssign ? 'Searching…' : 'Search'}
-                        </button>
-                        <button className="btn btn-link btn-sm" type="button" onClick={onResetAssignSearch} disabled={isLoadingAssign && assignSearch === ''}>
-                          Reset
-                        </button>
-                      </form>
-                      <div className="d-flex align-items-center text-muted small">
-                        <span className="badge badge-light mr-2">{assignProducts.length}</span>
-                        results
-                      </div>
-                      <Link to={ProductListUrl} className="btn btn-outline-secondary btn-sm">
-                        Open Product List
-                      </Link>
-                    </div>
-                  </div>
-
-                  <div className="card-body">
-                    {assignProducts.length === 0 && !isLoadingAssign ? <div className="text-center text-muted py-3">No products found. Try a different search.</div> : null}
-
-                    <ProductGrid
-                      products={assignProducts}
-                      isJewelerRole={isJewelerRole}
-                      qtyByProductId={qtyByProductId}
-                      isLoading={isLoadingAssign}
-                      hasMore={false}
-                      isAccepting={isAccepting}
-                      onQuantityChange={updateQuantity}
-                      onInquiry={handleInquiry}
-                      onLoadMore={() => {}}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -61,15 +61,7 @@ export interface Facets {
 
 export type FacetKey = 'metals' | 'baseQualities' | 'diamonds' | 'category' | 'subCategory';
 export type ProductCardProps = {
-  id?: string;
-  name: string;
-  metal?: string;
-  diamond?: { pieces?: number; weight?: number };
-  weight?: string;
-  price?: number | string;
-  liveRate?: number;
-  image?: string;
-  distributor?: string;
+  product?: any;
   onInquiry?: () => void;
   hideOwnership?: boolean;
   detailHref?: string;
