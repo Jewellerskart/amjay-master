@@ -11,7 +11,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: JSON.stringify(process.env.NODE_ENV) ? 'http://localhost:4000' : 'https://share.jewellerskart.com/amjay-api-server',
         changeOrigin: true,
         secure: false,
       },
