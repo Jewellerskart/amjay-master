@@ -50,10 +50,13 @@ export const AssignProductPanel = ({ control, usageOptions, requestOptions, prod
   };
 
   return (
-    <div className="card mb-3 inventory-assign-panel">
+    <div className="card mb-0 inventory-panel-card inventory-assign-panel">
       <div className="card-header d-flex justify-content-between align-items-center">
-        <h5 className="mb-0">Assign Product</h5>
-        <button className="btn btn-sm btn-outline-secondary" disabled={isLoadingProducts} onClick={onRefreshProducts}>
+        <div>
+          <h5 className="mb-1">Assign Product</h5>
+          <p className="text-muted mb-0 small">Assign one product at a time until pending quantity reaches zero.</p>
+        </div>
+        <button className="btn btn-sm btn-outline-primary" disabled={isLoadingProducts} onClick={onRefreshProducts}>
           {isLoadingProducts ? 'Refreshing...' : 'Refresh Available'}
         </button>
       </div>
@@ -61,17 +64,17 @@ export const AssignProductPanel = ({ control, usageOptions, requestOptions, prod
         {!selectedRequest && <div className="alert alert-info mb-3">Select a request first, then assign one product per click. Multi-qty requests can be fulfilled in multiple assignments.</div>}
 
         {selectedRequest && (
-          <div className="inventory-assign-summary mb-3">
+          <div className="inventory-assign-summary mb-4">
             <div className="d-flex justify-content-between align-items-start flex-wrap">
               <div>
-                <h6 className="mb-1 text-uppercase">{selectedRequest.styleCode || '-'}</h6>
+                <h6 className="mb-1 text-uppercase inventory-assign-summary__title">{selectedRequest.styleCode || '-'}</h6>
                 <p className="mb-1 text-muted small">Request ID: {selectedRequest._id?.slice(0, 8)} | {usageLabel(selectedRequest.usageChoice)}</p>
                 <p className="mb-0 text-muted small">Requested by: {selectedRequest.requestedByName || selectedRequest.requestedBy || '-'}</p>
               </div>
               <div className="d-flex flex-column align-items-md-end mt-2 mt-md-0">
-                <span className="badge badge-light mb-1">Required: {progress.required}</span>
-                <span className="badge badge-success mb-1">Assigned: {progress.assigned}</span>
-                <span className="badge badge-warning">Remaining: {progress.remaining}</span>
+                <span className="badge badge-light mb-1 inventory-pill">Required: {progress.required}</span>
+                <span className="badge badge-success mb-1 inventory-pill">Assigned: {progress.assigned}</span>
+                <span className="badge badge-warning inventory-pill">Remaining: {progress.remaining}</span>
               </div>
             </div>
             <div className="progress mt-3" style={{ height: 8 }}>
@@ -80,7 +83,7 @@ export const AssignProductPanel = ({ control, usageOptions, requestOptions, prod
           </div>
         )}
 
-        <div className="form-group">
+        <div className="form-group mb-3">
           <label>Request</label>
           <select className="form-control" value={control.requestId} onChange={(e) => onChange('requestId', e.target.value)}>
             <option value="">Select request</option>
@@ -91,8 +94,8 @@ export const AssignProductPanel = ({ control, usageOptions, requestOptions, prod
             ))}
           </select>
         </div>
-        <div className="form-group">
-          <label>Product ID</label>
+        <div className="form-group mb-3">
+          <label>Product ID / Code</label>
           <input className="form-control" list="available-products" value={control.productId} onChange={(e) => onChange('productId', e.target.value)} placeholder="Choose product id from the list below" />
           <datalist id="available-products">
             {productOptions.map((item) => (
@@ -102,7 +105,7 @@ export const AssignProductPanel = ({ control, usageOptions, requestOptions, prod
             ))}
           </datalist>
         </div>
-        <div className="form-row">
+        <div className="form-row align-items-end">
           <div className="form-group col-md-6">
             <label>Usage</label>
             <select className="form-control" value={control.usageChoice} onChange={(e) => onChange('usageChoice', e.target.value as InventoryUsageChoice)}>
@@ -110,25 +113,25 @@ export const AssignProductPanel = ({ control, usageOptions, requestOptions, prod
                 <option key={option} value={option}>
                   {usageLabel(option)}
                 </option>
-              ))}
-            </select>
+                ))}
+              </select>
           </div>
           <div className="form-group col-md-6 d-flex align-items-end">
-            <small className="text-muted mb-2">Each click assigns 1 piece. Use remaining count to finish multi-qty requests.</small>
+            <small className="text-muted mb-2">Each click assigns 1 piece. Use the remaining count to finish multi-qty requests.</small>
           </div>
         </div>
-        <div className="form-group">
+        <div className="form-group mb-3">
           <label>Remark</label>
-          <input className="form-control" value={control.remark} onChange={(e) => onChange('remark', e.target.value)} />
+          <textarea className="form-control" rows={2} placeholder="Optional assignment note" value={control.remark} onChange={(e) => onChange('remark', e.target.value)} />
         </div>
         {selectedProductMatchesAssigned && <small className="text-danger d-block mb-2">This product is already assigned to the selected request.</small>}
-        <button className="btn btn-success" disabled={disableAssign} onClick={() => onAssign()}>
+        <button className="btn btn-success inventory-panel-action" disabled={disableAssign} onClick={() => onAssign()}>
           {isAssigning ? 'Assigning...' : selectedRequest ? `Assign 1 Product${progress.remaining > 0 ? ` (Remaining ${progress.remaining})` : ''}` : 'Assign Product'}
         </button>
 
         {productOptions.length > 0 && (
-          <div className="mt-4 table-responsive">
-            <table className="table table-sm table-striped mb-0">
+          <div className="mt-4 table-responsive inventory-assign-table-wrap">
+            <table className="table table-sm table-ui mb-0 inventory-assign-table">
               <thead>
                 <tr>
                   <th>Product ID</th>
@@ -168,7 +171,7 @@ export const AssignProductPanel = ({ control, usageOptions, requestOptions, prod
         )}
       </div>
       {assignedIdSet.size > 0 && (
-        <div className="card-footer">
+        <div className="card-footer inventory-assign-footer">
           <small className="text-muted">Already assigned to this request</small>
           <div className="mt-2 d-flex flex-wrap">
             {Array.from(assignedIdSet).map((id) => (

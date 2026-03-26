@@ -84,20 +84,35 @@ export const InventoryRequestsPage = () => {
       <Header />
       <div className="content-body inventory-requests-page">
         <div className="container-fluid">
-          <div className="row page-titles mx-0 mb-3">
-            <div className="col-sm-12 p-md-0 d-flex justify-content-between align-items-center flex-wrap">
-              <div className="welcome-text">
-                <h4 className="mb-1">Inventory Requests</h4>
-                <p className="text-muted mb-0">Use quantity progress to complete each style request accurately. For example, if request qty is 2, assign two separate products to reach fulfilled.</p>
+          <div className="inventory-requests-hero mb-3">
+            <div className="inventory-requests-hero__content">
+              <span className="inventory-requests-hero__eyebrow">Inventory Workflow</span>
+              <h4 className="mb-1">Inventory Requests</h4>
+              <p className="mb-0 text-muted">
+                Use quantity progress to complete each style request accurately. If requested quantity is 2, assign two separate products to reach fulfilled.
+              </p>
+            </div>
+            <div className="inventory-requests-hero__metrics">
+              <div className="inventory-requests-hero__metric">
+                <small>Open</small>
+                <strong>{stats.OPEN}</strong>
+              </div>
+              <div className="inventory-requests-hero__metric">
+                <small>Pending Qty</small>
+                <strong>{quantityStats.pending}</strong>
+              </div>
+              <div className="inventory-requests-hero__metric">
+                <small>Total Requests</small>
+                <strong>{total}</strong>
               </div>
             </div>
           </div>
 
           <RequestSummaryCards stats={stats} quantityStats={quantityStats} />
 
-          <div className="row">
+          <div className="row inventory-requests-panels">
             {isJeweler && (
-              <div className="col-lg-6">
+              <div className={`${isEditorRole ? 'col-xl-6' : 'col-12'} mb-3`}>
                 <InventoryRequestForm
                   form={requestForm}
                   usageOptions={USAGE_OPTIONS}
@@ -109,7 +124,7 @@ export const InventoryRequestsPage = () => {
             )}
 
             {isEditorRole && (
-              <div className="col-lg-6">
+              <div className={`${isJeweler ? 'col-xl-6' : 'col-12'} mb-3`}>
                 <StatusUpdatePanel
                   control={statusControl}
                   statusOptions={STATUS_OPTIONS}
@@ -123,8 +138,8 @@ export const InventoryRequestsPage = () => {
           </div>
 
           {isEditorRole && (
-            <div className="row">
-              <div className="col-lg-6">
+            <div className="row inventory-requests-panels">
+              <div className="col-12 mb-3">
                 <AssignProductPanel
                   control={assignControl}
                   usageOptions={USAGE_OPTIONS}
@@ -141,8 +156,8 @@ export const InventoryRequestsPage = () => {
             </div>
           )}
 
-          <div className="row">
-            <div className="col-12">
+          <div className="row inventory-requests-panels">
+            <div className="col-12 mb-3">
               <RequestsTable
                 requests={requests}
                 statusOptions={STATUS_OPTIONS}

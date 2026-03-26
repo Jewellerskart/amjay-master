@@ -11,16 +11,17 @@ interface Props {
 }
 
 export const InventoryRequestForm = ({ form, usageOptions, isSubmitting, onChange, onSubmit }: Props) => (
-  <div className="card mb-3">
+  <div className="card mb-0 inventory-panel-card inventory-request-form">
     <div className="card-header">
-      <h5 className="mb-0">Request Product</h5>
+      <h5 className="mb-1">Request Product</h5>
+      <p className="text-muted mb-0 small">Raise a new request with style, quantity, and usage details.</p>
     </div>
     <div className="card-body">
-      <form onSubmit={onSubmit}>
+      <form className="inventory-panel-form" onSubmit={onSubmit}>
         <div className="form-row">
-          <div className="form-group col-md-5">
+          <div className="form-group col-md-4">
             <label>Style Code</label>
-            <input className="form-control" value={form.styleCode} onChange={(e) => onChange('styleCode', e.target.value.toUpperCase())} required />
+            <input className="form-control" placeholder="e.g. ST-0019" value={form.styleCode} onChange={(e) => onChange('styleCode', e.target.value.toUpperCase())} required />
           </div>
           <div className="form-group col-md-2">
             <label>Qty</label>
@@ -35,26 +36,28 @@ export const InventoryRequestForm = ({ form, usageOptions, isSubmitting, onChang
           </div>
           <div className="form-group col-md-3">
             <label>Usage</label>
-              <select className="form-control" value={form.usageChoice} onChange={(e) => onChange('usageChoice', e.target.value as InventoryUsageChoice)}>
-                {usageOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option === 'MEMO' || option === 'RENT' ? 'MEMO' : option}
-                  </option>
-                ))}
-              </select>
+            <select className="form-control" value={form.usageChoice} onChange={(e) => onChange('usageChoice', e.target.value as InventoryUsageChoice)}>
+              {usageOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option === 'MEMO' || option === 'RENT' ? 'MEMO' : option}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="form-group col-md-2">
+          <div className="form-group col-md-3">
             <label>Preferred Note</label>
-            <input className="form-control" value={form.preferredUsageNote} onChange={(e) => onChange('preferredUsageNote', e.target.value)} />
+            <input className="form-control" placeholder="Any specific choice" value={form.preferredUsageNote} onChange={(e) => onChange('preferredUsageNote', e.target.value)} />
           </div>
         </div>
         <div className="form-group">
           <label>Remark</label>
-          <input className="form-control" value={form.remark} onChange={(e) => onChange('remark', e.target.value)} />
+          <textarea className="form-control" rows={2} placeholder="Optional internal note" value={form.remark} onChange={(e) => onChange('remark', e.target.value)} />
         </div>
-        <button className="btn btn-primary" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Submitting...' : 'Submit Request'}
-        </button>
+        <div className="d-flex justify-content-end">
+          <button className="btn btn-primary inventory-panel-action" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Submitting...' : 'Submit Request'}
+          </button>
+        </div>
       </form>
     </div>
   </div>

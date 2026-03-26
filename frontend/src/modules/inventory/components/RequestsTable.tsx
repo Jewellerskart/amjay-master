@@ -44,18 +44,18 @@ export const RequestsTable = ({ requests, statusOptions, statusFilter, limit, pa
   };
 
   return (
-    <div className="card inventory-requests-table-card">
-      <div className="card-header d-flex justify-content-between align-items-center flex-wrap">
+    <div className="card inventory-requests-table-card inventory-panel-card mb-0">
+      <div className="card-header d-flex justify-content-between align-items-center flex-wrap inventory-table-toolbar">
         <div>
           <h5 className="mb-1">Requests</h5>
           <p className="text-muted mb-0">Track request fulfilment by quantity, then assign one matching product at a time.</p>
         </div>
-        <div className="form-inline">
+        <div className="form-inline inventory-table-filters">
           <select className="form-control mr-2" value={statusFilter} onChange={(e) => onStatusFilterChange(e.target.value as InventoryRequestStatus | '')}>
             <option value="">All statuses</option>
             {statusOptions.map((option) => (
               <option key={option} value={option}>
-                {option}
+                {option.replace('_', ' ')}
               </option>
             ))}
           </select>
@@ -125,7 +125,7 @@ export const RequestsTable = ({ requests, statusOptions, statusFilter, limit, pa
                       <td>{request.preferredUsageNote || '-'}</td>
                       <td>
                         {assignedIds.length ? (
-                          <div className="d-flex flex-wrap">
+                          <div className="d-flex flex-wrap inventory-assigned-badges">
                             {assignedIds.slice(0, 4).map((id) => (
                               <span key={id} className="badge badge-light mr-1 mb-1">
                                 {id.slice(0, 8)}
@@ -145,7 +145,7 @@ export const RequestsTable = ({ requests, statusOptions, statusFilter, limit, pa
             </tbody>
           </table>
         </div>
-        <div className="d-flex justify-content-between align-items-center mt-3">
+        <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap inventory-table-pagination">
           <small className="text-muted">
             Showing page {page} of {totalPages} ({total} requests)
           </small>

@@ -16,12 +16,13 @@ interface Props {
 }
 
 export const StatusUpdatePanel = ({ control, statusOptions, requestOptions, isUpdating, onChange, onSubmit }: Props) => (
-  <div className="card mb-3">
+  <div className="card mb-0 inventory-panel-card inventory-status-panel">
     <div className="card-header">
-      <h5 className="mb-0">Update Request Status</h5>
+      <h5 className="mb-1">Update Request Status</h5>
+      <p className="text-muted mb-0 small">Move requests between workflow stages with a traceable remark.</p>
     </div>
     <div className="card-body">
-      <div className="form-group">
+      <div className="form-group mb-3">
         <label>Request ID</label>
         <select className="form-control" value={control.requestId} onChange={(e) => onChange('requestId', e.target.value)}>
           <option value="">Select request</option>
@@ -32,23 +33,25 @@ export const StatusUpdatePanel = ({ control, statusOptions, requestOptions, isUp
           ))}
         </select>
       </div>
-      <div className="form-group">
+      <div className="form-group mb-3">
         <label>Status</label>
         <select className="form-control" value={control.status} onChange={(e) => onChange('status', e.target.value as InventoryRequestStatus)}>
           {statusOptions.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {option.replace('_', ' ')}
             </option>
           ))}
         </select>
       </div>
-      <div className="form-group">
+      <div className="form-group mb-3">
         <label>Remark</label>
-        <input className="form-control" value={control.remark} onChange={(e) => onChange('remark', e.target.value)} />
+        <textarea className="form-control" rows={2} placeholder="Reason for this status update" value={control.remark} onChange={(e) => onChange('remark', e.target.value)} />
       </div>
-      <button className="btn btn-primary" disabled={isUpdating} onClick={onSubmit}>
-        {isUpdating ? 'Saving...' : 'Update Status'}
-      </button>
+      <div className="d-flex justify-content-end">
+        <button className="btn btn-primary inventory-panel-action" disabled={isUpdating} onClick={onSubmit}>
+          {isUpdating ? 'Saving...' : 'Update Status'}
+        </button>
+      </div>
     </div>
   </div>
 );

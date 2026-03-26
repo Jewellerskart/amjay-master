@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { AuthApi } from '@api/index';
+import { AuthApi, ContactAdminApi, InvoiceApi, ProductApi, TicketApi, inventoryApi } from '@api/index';
 import { useAuthSellerLogin } from '@hooks/sellerAuth';
 import {
   allUserAccountUrl,
@@ -32,6 +32,16 @@ interface HeaderProps {
 
 type MenuKey = 'user' | 'product' | 'inventory' | 'sale' | 'contact' | null;
 
+const UNRESOLVED_CONTACT_STATUSES = new Set(['new', 'in-progress', 'waiting-user']);
+
+const readCollectionCount = (response: any): number => {
+  const count = Number(response?.data?.count);
+  if (Number.isFinite(count) && count >= 0) return count;
+  return Array.isArray(response?.data?.data) ? response.data.data.length : 0;
+};
+
+const formatIndicatorCount = (count: number) => (count > 99 ? '99+' : `${count}`);
+
 export const Header = ({ scriptsArr = [] }: HeaderProps) => {
   const { data: user } = useAuthSellerLogin();
   const location = useLocation();
@@ -41,8 +51,24 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
   const isDistributor = role === 'distributor';
   const isAccountant = role === 'accountant';
   const isPurchase = role === 'purchase';
+  const canManageRateCharts = isAdminUser || isDistributor;
+  const canApproveInvoices = isAdminUser || isAccountant;
   const { notifications, totalNotificationCount } = useUserNotifications(user);
   const [logout] = AuthApi.useLogoutMutation();
+  const [fetchUsers] = AuthApi.useGetUsersMutation();
+  const [fetchInventory] = inventoryApi.useListInventoryMutation();
+  const [fetchInvoices] = InvoiceApi.useListInvoicesMutation();
+  const [fetchAllContactQueries] = ContactAdminApi.useGetAllContactQueriesMutation();
+  const { data: missingDiamondRateData } = ProductApi.useListMissingDiamondRatesQuery(undefined, { skip: !canManageRateCharts });
+  const { data: openTicketData } = TicketApi.useListTicketsQuery(
+    { status: 'OPEN', page: 1, limit: 1 },
+    { skip: !user?._id, refetchOnMountOrArgChange: true },
+  );
+  const { data: inProgressTicketData } = TicketApi.useListTicketsQuery(
+    { status: 'IN_PROGRESS', page: 1, limit: 1 },
+    { skip: !user?._id, refetchOnMountOrArgChange: true },
+  );
+  const { data: myContactQueriesData } = ContactAdminApi.useGetMyContactQueriesQuery(undefined, { skip: !user?._id || isAdminUser });
 
   const [openMenu, setOpenMenu] = useState<MenuKey>(null);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -50,6 +76,10 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
   const [mobileOpenSection, setMobileOpenSection] = useState<MenuKey>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNotificationHoverOpen, setIsNotificationHoverOpen] = useState(false);
+  const [pendingKycCount, setPendingKycCount] = useState(0);
+  const [pendingAssignmentCount, setPendingAssignmentCount] = useState(0);
+  const [invoiceApprovalCount, setInvoiceApprovalCount] = useState(0);
+  const [contactPendingCount, setContactPendingCount] = useState(0);
 
   const accountRef = useRef<HTMLDivElement | null>(null);
   const notificationHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -101,6 +131,142 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
     setMobileOpenSection(null);
   }, [location.pathname]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    const loadPendingKycCount = async () => {
+      if (!isAdminUser) {
+        if (isActive) setPendingKycCount(0);
+        return;
+      }
+
+      try {
+        const response: any = await fetchUsers({ page: 1, limit: 1 }).unwrap();
+        const summaryValue = Number(response?.data?.summary?.pendingKyc);
+        if (Number.isFinite(summaryValue) && summaryValue >= 0) {
+          if (isActive) setPendingKycCount(summaryValue);
+          return;
+        }
+        const rows = Array.isArray(response?.data?.data) ? response.data.data : [];
+        const fallbackCount = rows.filter((item: any) => !item?.kycVerified).length;
+        if (isActive) setPendingKycCount(fallbackCount);
+      } catch {
+        if (isActive) setPendingKycCount(0);
+      }
+    };
+
+    void loadPendingKycCount();
+
+    return () => {
+      isActive = false;
+    };
+  }, [fetchUsers, isAdminUser]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadPendingAssignments = async () => {
+      const userId = `${user?._id || ''}`.trim();
+      if (!userId) {
+        if (isActive) setPendingAssignmentCount(0);
+        return;
+      }
+
+      try {
+        const response: any = await fetchInventory({
+          page: 1,
+          limit: 1,
+          holderRole: (role || undefined) as any,
+          currentHolderUserId: userId,
+          includeAssignedClones: true,
+          includePending: true,
+        }).unwrap();
+        const nextCount = readCollectionCount(response);
+        if (isActive) setPendingAssignmentCount(nextCount);
+      } catch {
+        if (isActive) setPendingAssignmentCount(0);
+      }
+    };
+
+    void loadPendingAssignments();
+
+    return () => {
+      isActive = false;
+    };
+  }, [fetchInventory, role, user?._id]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadInvoiceApprovals = async () => {
+      if (!canApproveInvoices) {
+        if (isActive) setInvoiceApprovalCount(0);
+        return;
+      }
+
+      try {
+        const [purchasePending, memoPending] = await Promise.all([
+          fetchInvoices({ page: 1, limit: 1, status: 'PURCHASE_PENDING_PAYMENT' }).unwrap().catch(() => null),
+          fetchInvoices({ page: 1, limit: 1, status: 'MEMO_PENDING_PAYMENT' }).unwrap().catch(() => null),
+        ]);
+        const nextCount = readCollectionCount(purchasePending) + readCollectionCount(memoPending);
+        if (isActive) setInvoiceApprovalCount(nextCount);
+      } catch {
+        if (isActive) setInvoiceApprovalCount(0);
+      }
+    };
+
+    void loadInvoiceApprovals();
+
+    return () => {
+      isActive = false;
+    };
+  }, [canApproveInvoices, fetchInvoices]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const setCount = (value: number) => {
+      if (isActive) setContactPendingCount(Math.max(0, value));
+    };
+
+    const loadPendingContacts = async () => {
+      const userId = `${user?._id || ''}`.trim();
+      if (!userId) {
+        setCount(0);
+        return;
+      }
+
+      if (!isAdminUser) {
+        const rows = Array.isArray(myContactQueriesData?.data?.queries) ? myContactQueriesData.data.queries : [];
+        const nextCount = rows.filter((query: any) => {
+          const status = `${query?.status || ''}`.trim().toLowerCase();
+          return status ? UNRESOLVED_CONTACT_STATUSES.has(status) : true;
+        }).length;
+        setCount(nextCount);
+        return;
+      }
+
+      try {
+        const responses = await Promise.all(
+          Array.from(UNRESOLVED_CONTACT_STATUSES).map((status) =>
+            fetchAllContactQueries({ status, page: 1, limit: 1 }).unwrap().catch(() => null),
+          ),
+        );
+        const nextCount = responses.reduce((total, response) => total + readCollectionCount(response), 0);
+        setCount(nextCount);
+      } catch {
+        setCount(0);
+      }
+    };
+
+    void loadPendingContacts();
+
+    return () => {
+      isActive = false;
+    };
+  }, [fetchAllContactQueries, isAdminUser, myContactQueriesData, user?._id]);
+
   const onLogout = async () => {
     try {
       await logout().unwrap();
@@ -123,6 +289,21 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
 
   const userInitials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`.toUpperCase() || 'U';
   const previewNotifications = notifications.slice(0, 5);
+  const missingDiamondCount = useMemo(() => {
+    const list = missingDiamondRateData?.data?.data;
+    return Array.isArray(list) ? list.length : 0;
+  }, [missingDiamondRateData]);
+  const openTicketCount = useMemo(() => readCollectionCount(openTicketData), [openTicketData]);
+  const inProgressTicketCount = useMemo(() => readCollectionCount(inProgressTicketData), [inProgressTicketData]);
+  const supportTicketCount = openTicketCount + inProgressTicketCount;
+  const supportPendingCount = supportTicketCount + contactPendingCount;
+
+  const renderMenuLabel = (label: string, count = 0, tone: 'is-alert' | 'is-warning' | 'is-neutral' = 'is-alert') => (
+    <span className="header-item-inline">
+      <span>{label}</span>
+      {count > 0 && <span className={`header-indicator-badge ${tone}`}>{formatIndicatorCount(count)}</span>}
+    </span>
+  );
 
   const openNotificationHover = () => {
     if (notificationHoverTimerRef.current) {
@@ -174,13 +355,13 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                     }}
                     onMouseEnter={() => window.innerWidth > 991 && setOpenMenu('user')}
                   >
-                    User Master
+                    {renderMenuLabel('User Master', pendingKycCount)}
                     <i className={`fa ml-1 ${openMenu === 'user' ? 'fa-angle-up' : 'fa-angle-down'}`} />
                   </button>
                   {openMenu === 'user' && (
                     <div className="header-dropdown-menu" onClick={(event) => event.stopPropagation()}>
                       <NavLink to={allUserAccountUrl} className="header-dropdown-item">
-                        Users
+                        {renderMenuLabel('Users', pendingKycCount)}
                       </NavLink>
                       <NavLink to={onBoardingPageUrl} className="header-dropdown-item">
                         New Onboarding
@@ -210,7 +391,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                   }}
                   onMouseEnter={() => window.innerWidth > 991 && setOpenMenu('product')}
                 >
-                  Products
+                  {renderMenuLabel('Products', missingDiamondCount, 'is-warning')}
                 </button>
                 {openMenu === 'product' && (
                   <div className="header-dropdown-menu" onClick={(event) => event.stopPropagation()}>
@@ -223,7 +404,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                           Product List
                         </NavLink>
                         <NavLink to={rateChartsUrl} className="header-dropdown-item">
-                          Rate Charts
+                          {renderMenuLabel('Rate Charts', missingDiamondCount, 'is-warning')}
                         </NavLink>
                       </>
                     )}
@@ -242,7 +423,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                   }}
                   onMouseEnter={() => window.innerWidth > 991 && setOpenMenu('inventory')}
                 >
-                  Inventory
+                  {renderMenuLabel('Inventory', pendingAssignmentCount)}
                 </button>
                 {openMenu === 'inventory' && (
                   <div className="header-dropdown-menu" onClick={(event) => event.stopPropagation()}>
@@ -250,7 +431,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                       My Inventory
                     </NavLink>
                     <NavLink to={inventoryPendingUrl} className="header-dropdown-item">
-                      Pending Assignments
+                      {renderMenuLabel('Pending Assignments', pendingAssignmentCount)}
                     </NavLink>
                     {(isAdminUser || isDistributor) && (
                       <NavLink to={inventoryRequestsUrl} className="header-dropdown-item">
@@ -275,7 +456,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                   }}
                   onMouseEnter={() => window.innerWidth > 991 && setOpenMenu('sale')}
                 >
-                  POS & Sales
+                  {renderMenuLabel('POS & Sales', invoiceApprovalCount)}
                 </button>
                 {openMenu === 'sale' && (
                   <div className="header-dropdown-menu header-dropdown-menu-static">
@@ -284,7 +465,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                     </NavLink>
                     {(isAdminUser || isAccountant) && (
                       <NavLink to="/invoices/approvals" className="header-dropdown-item">
-                        Invoice Approvals
+                        {renderMenuLabel('Invoice Approvals', invoiceApprovalCount)}
                       </NavLink>
                     )}
                     {(isAdminUser || isDistributor || isJeweler) && (
@@ -307,20 +488,20 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                   }}
                   onMouseEnter={() => window.innerWidth > 991 && setOpenMenu('contact')}
                 >
-                  Support
+                  {renderMenuLabel('Support', supportPendingCount, 'is-neutral')}
                 </button>
                 {openMenu === 'contact' && (
                   <div className="header-dropdown-menu" onClick={(event) => event.stopPropagation()}>
                     <NavLink to={contactAdminUrl} className="header-dropdown-item">
-                      Contact Admin
+                      {renderMenuLabel('Contact Admin', contactPendingCount, 'is-neutral')}
                     </NavLink>
                     {(isAdminUser || isPurchase) && (
                       <NavLink to="/tickets/purchase" className="header-dropdown-item">
-                        Purchase Tickets
+                        {renderMenuLabel('Purchase Tickets', supportTicketCount)}
                       </NavLink>
                     )}
                     <NavLink to={ticketQueueUrl} className="header-dropdown-item">
-                      Ticket Queue
+                      {renderMenuLabel('Ticket Queue', supportTicketCount)}
                     </NavLink>
                   </div>
                 )}
@@ -422,13 +603,13 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                 {isAdminUser && (
                   <div className="mobile-master-block">
                     <button type="button" className="mobile-nav-link mobile-nav-link-toggle" onClick={() => toggleMobileSection('user')}>
-                      User Master
+                      {renderMenuLabel('User Master', pendingKycCount)}
                       <i className={`fa ml-1 ${mobileOpenSection === 'user' ? 'fa-angle-up' : 'fa-angle-down'}`} />
                     </button>
                     {mobileOpenSection === 'user' && (
                       <div className="mobile-submenu">
                         <NavLink to={allUserAccountUrl} className="mobile-nav-link">
-                          Users
+                          {renderMenuLabel('Users', pendingKycCount)}
                         </NavLink>
                         <NavLink to={onBoardingPageUrl} className="mobile-nav-link">
                           New Onboarding
@@ -447,7 +628,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
 
                 <div className="mobile-master-block">
                   <button type="button" className="mobile-nav-link mobile-nav-link-toggle" onClick={() => toggleMobileSection('product')}>
-                    Products
+                    {renderMenuLabel('Products', missingDiamondCount, 'is-warning')}
                     <i className={`fa ml-1 ${mobileOpenSection === 'product' ? 'fa-angle-up' : 'fa-angle-down'}`} />
                   </button>
                   {mobileOpenSection === 'product' && (
@@ -461,7 +642,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                             Product List
                           </NavLink>
                           <NavLink to={rateChartsUrl} className="mobile-nav-link">
-                            Rate Charts
+                            {renderMenuLabel('Rate Charts', missingDiamondCount, 'is-warning')}
                           </NavLink>
                         </>
                       )}
@@ -471,7 +652,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
 
                 <div className="mobile-master-block">
                   <button type="button" className="mobile-nav-link mobile-nav-link-toggle" onClick={() => toggleMobileSection('inventory')}>
-                    Inventory
+                    {renderMenuLabel('Inventory', pendingAssignmentCount)}
                     <i className={`fa ml-1 ${mobileOpenSection === 'inventory' ? 'fa-angle-up' : 'fa-angle-down'}`} />
                   </button>
                   {mobileOpenSection === 'inventory' && (
@@ -480,7 +661,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                         My Inventory
                       </NavLink>
                       <NavLink to={inventoryPendingUrl} className="mobile-nav-link">
-                        Pending Assignments
+                        {renderMenuLabel('Pending Assignments', pendingAssignmentCount)}
                       </NavLink>
                       {(isAdminUser || isDistributor) && (
                         <NavLink to={inventoryRequestsUrl} className="mobile-nav-link">
@@ -496,7 +677,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
 
                 <div className="mobile-master-block">
                   <button type="button" className="mobile-nav-link mobile-nav-link-toggle" onClick={() => toggleMobileSection('sale')}>
-                    POS & Sales
+                    {renderMenuLabel('POS & Sales', invoiceApprovalCount)}
                     <i className={`fa ml-1 ${mobileOpenSection === 'sale' ? 'fa-angle-up' : 'fa-angle-down'}`} />
                   </button>
                   {mobileOpenSection === 'sale' && (
@@ -506,7 +687,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                       </NavLink>
                       {(isAdminUser || isAccountant) && (
                         <NavLink to="/invoices/approvals" className="mobile-nav-link">
-                          Invoice Approvals
+                          {renderMenuLabel('Invoice Approvals', invoiceApprovalCount)}
                         </NavLink>
                       )}
                       {(isAdminUser || isDistributor || isJeweler) && (
@@ -520,21 +701,21 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
 
                 <div className="mobile-master-block">
                   <button type="button" className="mobile-nav-link mobile-nav-link-toggle" onClick={() => toggleMobileSection('contact')}>
-                    Support
+                    {renderMenuLabel('Support', supportPendingCount, 'is-neutral')}
                     <i className={`fa ml-1 ${mobileOpenSection === 'contact' ? 'fa-angle-up' : 'fa-angle-down'}`} />
                   </button>
                   {mobileOpenSection === 'contact' && (
                     <div className="mobile-submenu">
                       <NavLink to={contactAdminUrl} className="mobile-nav-link">
-                        Contact Admin
+                        {renderMenuLabel('Contact Admin', contactPendingCount, 'is-neutral')}
                       </NavLink>
                       {(isAdminUser || isPurchase) && (
                         <NavLink to="/tickets/purchase" className="mobile-nav-link">
-                          Purchase Tickets
+                          {renderMenuLabel('Purchase Tickets', supportTicketCount)}
                         </NavLink>
                       )}
                       <NavLink to={ticketQueueUrl} className="mobile-nav-link">
-                        Ticket Queue
+                        {renderMenuLabel('Ticket Queue', supportTicketCount)}
                       </NavLink>
                     </div>
                   )}
