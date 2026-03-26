@@ -1,7 +1,7 @@
 export const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-export const BACKEND_API_URL = IS_PRODUCTION ? 'https://marketplace.jewellerskart.com' : 'http://localhost:4000';
-export const FRONTEND_URL = IS_PRODUCTION ? 'https://marketplace-admin-dun.vercel.app' : 'http://localhost:5173';
+export const BACKEND_API_URL = IS_PRODUCTION ? 'https://share.jewellerskart.com/amjay-api-server' : 'http://localhost:4000';
+export const FRONTEND_URL = IS_PRODUCTION ? 'https://amjay-master.vercel.app' : 'http://localhost:5173';
 
 export const AWS_BASE_URL = 'https://jk-marketplace.s3.ap-south-1.amazonaws.com';
 export const AWS_ASSETS_URL = `${AWS_BASE_URL}/assets`;
