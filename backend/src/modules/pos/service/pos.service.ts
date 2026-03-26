@@ -524,7 +524,7 @@ const autoAssignProduct = async (jewelerId: string, performedBy: string, soldPro
   await createTicket({
     requestedBy: jewelerId,
     priority: 'high',
-    productId: null,
+    productId: soldProductId || null,
   })
   await sendAutoAssignFailureMail({
     distributor,

@@ -74,8 +74,7 @@ export const PurchaseQueuePage = () => {
         <table className="table table-sm mb-0">
           <thead className="table-light">
             <tr>
-              <th>Ticket</th>
-              <th>Design</th>
+              <th>Design No</th>
               <th>Image</th>
               <th>Components</th>
               <th>Requested By</th>
@@ -88,16 +87,15 @@ export const PurchaseQueuePage = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={9}>Loading...</td>
+                <td colSpan={8}>Loading...</td>
               </tr>
             ) : tickets.length === 0 ? (
               <tr>
-                <td colSpan={9}>No tickets found</td>
+                <td colSpan={8}>No tickets found</td>
               </tr>
             ) : (
               tickets.map((t: any) => (
                 <tr key={t._id}>
-                  <td>{t._id}</td>
                   <td>
                     <div className="font-weight-bold">{t?.product?.design || t?.product?.styleCode || '-'}</div>
                     <small className="text-muted">{t?.product?.jewelCode || '-'}</small>
