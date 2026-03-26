@@ -1,5 +1,5 @@
 import { Header } from '@common/header';
-import { EditUser } from '../components/admin/user/EditUser';
+import { EditUser } from '../components';
 
 export const EditUserPage = () => (
   <>

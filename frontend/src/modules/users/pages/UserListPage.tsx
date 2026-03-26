@@ -1,5 +1,5 @@
 import { Header } from '@common/header';
-import { UserList } from '../components/admin/user/UserList';
+import { UserList } from '../components';
 
 export const UserListPage = () => (
   <>

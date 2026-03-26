@@ -2,12 +2,11 @@ import { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
 import type { ProductRow } from '../../inventory/types/types';
 
-type AssignProductHandler = (product: ProductRow, options?: { toUserId?: string; quantity?: number }) => Promise<void>;
+type AssignProductHandler = (product: ProductRow, options?: { toUserId?: string; quantity?: number }) => Promise<boolean>;
 
 interface UseBulkProductAssignmentParams {
   canAssign: boolean;
   products: ProductRow[];
-  assignQtyByProductId: Record<string, string>;
   onAssignProduct: AssignProductHandler;
   onAfterAssign?: () => void | Promise<void>;
 }
@@ -15,7 +14,6 @@ interface UseBulkProductAssignmentParams {
 export const useBulkProductAssignment = ({
   canAssign,
   products,
-  assignQtyByProductId,
   onAssignProduct,
   onAfterAssign,
 }: UseBulkProductAssignmentParams) => {
@@ -35,18 +33,21 @@ export const useBulkProductAssignment = ({
         return;
       }
 
+      let assignedCount = 0;
       for (const product of selectedProducts) {
-        const quantity = Number(assignQtyByProductId[product._id] || 1);
-        await onAssignProduct(product, { toUserId: bulkJewelerId, quantity });
+        const success = await onAssignProduct(product, { toUserId: bulkJewelerId, quantity: 1 });
+        if (success) assignedCount += 1;
       }
 
-      toast.success('Selected products assigned');
+      if (assignedCount > 0) {
+        toast.success(`${assignedCount} product(s) assigned`);
+      }
       setBulkJewelerId('');
       if (onAfterAssign) {
         await onAfterAssign();
       }
     },
-    [assignQtyByProductId, bulkJewelerId, canAssign, onAfterAssign, onAssignProduct, products],
+    [bulkJewelerId, canAssign, onAfterAssign, onAssignProduct, products],
   );
 
   return { bulkJewelerId, setBulkJewelerId, assignSelected };

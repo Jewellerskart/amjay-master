@@ -1,5 +1,5 @@
 import cron from 'node-cron'
-import { InvoiceModel } from '../module/invoice/model/invoice.schema'
+import { InvoiceModel } from '../modules/invoice/model/invoice.schema'
 import { customLog } from '../utils/common'
 
 export const runInvoiceReminderCron = () => {
@@ -22,3 +22,4 @@ export const runInvoiceReminderCron = () => {
     }
   })
 }
+

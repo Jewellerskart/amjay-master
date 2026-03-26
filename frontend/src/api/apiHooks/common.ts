@@ -1,17 +1,13 @@
-import { BACKEND_API_URL } from '@variable';
 import { apiSlice } from '../apiSlice';
-import type { TApiResponse } from '@types';
-
-const baseUrl = `${BACKEND_API_URL}/api/v1`;
+import type { ApiResponse } from '../types';
 
 export const commonApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    postCms: builder.mutation<TApiResponse, Record<string, unknown>>({
+    postCms: builder.mutation<ApiResponse, Record<string, unknown>>({
       query: (data) => ({
-        url: `${baseUrl}/c-r-c/cms/all-cms`,
+        url: '/c-r-c/cms/all-cms',
         method: 'POST',
         body: data,
-        credentials: 'include',
       }),
     }),
   }),

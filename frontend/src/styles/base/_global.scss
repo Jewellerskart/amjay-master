@@ -45,6 +45,68 @@ a {
   /* max-width: 1280px; */
 }
 
+.pm-input-wrap {
+  position: relative;
+}
+
+.pm-input-icon {
+  position: absolute;
+  right: 42px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6f7f98;
+  z-index: 1;
+  font-size: 12px;
+}
+
+.pm-search-input {
+  padding-left: 12px;
+  padding-right: 68px;
+}
+
+.pm-input-action {
+  border: 0;
+  background: transparent;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+
+  &:hover {
+    background: #e8edf7;
+    color: #30415b;
+  }
+}
+
+.pm-input-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: #6f7f98;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+
+  &:hover {
+    background: #e8edf7;
+    color: #30415b;
+  }
+}
+
 .brand-logo {
   min-height: 56px;
   padding: 0 0 0 15px;
@@ -55,7 +117,7 @@ a {
 }
 
 .brand-logo .logo-abbr {
-  width: 70px;
+  width: 200px;
   height: 44px;
   object-fit: contain;
   border-radius: 0;

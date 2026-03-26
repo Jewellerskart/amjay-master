@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Header } from '@common/header';
 import { useAuthSellerLogin } from '@hooks/sellerAuth';
-import { AuthApi } from '@api/api.index';
-import { TApiResponse } from '@types';
-import { allUserAccountUrl, commissionControlUrl, onBoardingPageUrl } from '@variable';
-import { useGetCommissionsByUserQuery } from '@api/apiHooks/commission';
+import { AuthApi } from '@api/index';
+import { useGetPosReportQuery } from '@api/apiHooks/pos';
+import type { TApiResponse } from '@types';
+import { allUserAccountUrl, invoicePageUrl, onBoardingPageUrl, posSaleUrl } from '@variable';
 import { isAdminRole } from '@shared/utils/roles';
 import '@styles/pages/dashboard.css';
 import { IndNumberFormat } from '@utils/formateDate';
@@ -14,9 +14,16 @@ type DashboardData = {
   users: any[];
   totalUsers: number;
   verifiedUsers: number;
-  totalCreditLimit: number;
-  totalWalletBalance: number;
 };
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString();
+};
+
+const modeLabel = (mode: string) => (mode === 'MEMO' ? 'Memo' : mode === 'PURCHASE' ? 'Outright' : mode || '-');
 
 export const Home = () => {
   const { data: currentUser, isLoading: isUserLoading } = useAuthSellerLogin();
@@ -26,23 +33,26 @@ export const Home = () => {
     users: [],
     totalUsers: 0,
     verifiedUsers: 0,
-    totalCreditLimit: 0,
-    totalWalletBalance: 0,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isUsersLoading, setIsUsersLoading] = useState(true);
 
-  const { data: commissionResponse } = useGetCommissionsByUserQuery(`${currentUser?._id || ''}`, {
-    skip: !currentUser?._id,
-  });
+  const { data: posReportResponse, isFetching: isPosReportLoading } = useGetPosReportQuery(
+    { limit: 8 },
+    { skip: !currentUser?._id }
+  );
 
-  const commissions = useMemo(() => commissionResponse?.data?.commissions || [], [commissionResponse]);
-  const recentCommissions = commissions.slice(0, 5);
+  const reportMetrics = posReportResponse?.data?.metrics;
+  const recentTransactions = useMemo(() => posReportResponse?.data?.recentTransactions || [], [posReportResponse]);
+  const memoAging = useMemo(() => posReportResponse?.data?.memoAging || [], [posReportResponse]);
 
   useEffect(() => {
-    const loadDashboard = async () => {
-      if (!currentUser) return;
+    const loadUsers = async () => {
+      if (!currentUser || !isAdminUser) {
+        setIsUsersLoading(false);
+        return;
+      }
 
-      setIsLoading(true);
+      setIsUsersLoading(true);
       try {
         const payload = {
           page: 1,
@@ -63,20 +73,18 @@ export const Home = () => {
           users: Array.isArray(usersData) ? usersData : [],
           totalUsers: Number(usersSummary?.totalUsers || 0) || usersRes?.data?.count || (Array.isArray(usersData) ? usersData.length : 0),
           verifiedUsers: Number(usersSummary?.verifiedUsers || 0),
-          totalCreditLimit: Number(usersSummary?.totalCreditLimit || 0),
-          totalWalletBalance: Number(usersSummary?.totalWalletBalance || 0),
         });
       } finally {
-        setIsLoading(false);
+        setIsUsersLoading(false);
       }
     };
 
-    loadDashboard();
-  }, [currentUser, fetchUsers]);
+    loadUsers();
+  }, [currentUser, fetchUsers, isAdminUser]);
 
-  const verifiedUsersCount = useMemo(() => dashboardData.verifiedUsers, [dashboardData.verifiedUsers]);
+  const isLoading = isUserLoading || isUsersLoading || isPosReportLoading;
 
-  if (isUserLoading || isLoading) {
+  if (isLoading) {
     return (
       <>
         <Header />
@@ -104,9 +112,9 @@ export const Home = () => {
                 </h4>
                 <span className="text-muted text-capitalize">Role: {currentUser?.role || 'member'}</span>
                 <div className="hero-tags mt-3">
-                  <span className="hero-tag">User Ops</span>
-                  <span className="hero-tag">Commission Ledger</span>
-                  <span className="hero-tag">Inventory Sync</span>
+                  <span className="hero-tag">Sold: {reportMetrics?.soldCount || 0}</span>
+                  <span className="hero-tag">On Memo: {reportMetrics?.activeMemoCount || 0}</span>
+                  <span className="hero-tag">Pending: {reportMetrics?.pendingInvoiceCount || 0}</span>
                 </div>
               </div>
             </div>
@@ -116,24 +124,67 @@ export const Home = () => {
             <div className="col-xl-3 col-md-6 dashboard-stat">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body">
-                  <small className="text-muted">Total Users</small>
-                  <h3 className="mb-0">{dashboardData.totalUsers}</h3>
+                  <small className="text-muted">Sold Products</small>
+                  <h3 className="mb-0">{reportMetrics?.soldCount || 0}</h3>
+                  <small className="text-muted">
+                    Outright {reportMetrics?.soldOutrightCount || 0} | Memo {reportMetrics?.soldMemoCount || 0}
+                  </small>
                 </div>
               </div>
             </div>
             <div className="col-xl-3 col-md-6 dashboard-stat">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body">
-                  <small className="text-muted">Verified Users</small>
-                  <h3 className="mb-0 text-success">{verifiedUsersCount}</h3>
+                  <small className="text-muted">Inventory In Use</small>
+                  <h3 className="mb-0">{reportMetrics?.activeOutrightCount || 0}</h3>
+                  <small className="text-muted">Active Outright</small>
                 </div>
               </div>
             </div>
             <div className="col-xl-3 col-md-6 dashboard-stat">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body">
-                  <small className="text-muted">Commission Entries</small>
-                  <h3 className="mb-0 text-primary">{commissions.length}</h3>
+                  <small className="text-muted">Memo Aging</small>
+                  <h3 className="mb-0">{reportMetrics?.activeMemoCount || 0}</h3>
+                  <small className="text-muted">
+                    Avg {reportMetrics?.avgMemoDays || 0}d | Max {reportMetrics?.maxMemoDays || 0}d
+                  </small>
+                </div>
+              </div>
+            </div>
+            <div className="col-xl-3 col-md-6 dashboard-stat">
+              <div className="card border-0 shadow-sm h-100">
+                <div className="card-body">
+                  <small className="text-muted">Pending Receivable</small>
+                  <h3 className="mb-0">Rs {IndNumberFormat(reportMetrics?.pendingInvoiceAmount || 0)}</h3>
+                  <small className="text-muted">{reportMetrics?.pendingInvoiceCount || 0} invoices</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="row mt-2">
+            <div className="col-xl-3 col-md-6 dashboard-stat">
+              <div className="card border-0 shadow-sm h-100">
+                <div className="card-body">
+                  <small className="text-muted">Gross Sales</small>
+                  <h3 className="mb-0">Rs {IndNumberFormat(reportMetrics?.totalGrossSales || 0)}</h3>
+                </div>
+              </div>
+            </div>
+            <div className="col-xl-3 col-md-6 dashboard-stat">
+              <div className="card border-0 shadow-sm h-100">
+                <div className="card-body">
+                  <small className="text-muted">Net Payable</small>
+                  <h3 className="mb-0">Rs {IndNumberFormat(reportMetrics?.totalNetPayable || 0)}</h3>
+                </div>
+              </div>
+            </div>
+            <div className="col-xl-3 col-md-6 dashboard-stat">
+              <div className="card border-0 shadow-sm h-100">
+                <div className="card-body">
+                  <small className="text-muted">Commission Deduction</small>
+                  <h3 className="mb-0">Rs {IndNumberFormat(reportMetrics?.totalCommissionDeduction || 0)}</h3>
                 </div>
               </div>
             </div>
@@ -141,16 +192,12 @@ export const Home = () => {
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body">
                   <small className="text-muted">Quick Actions</small>
-                  <div className="mt-2 mb-2">
-                    <small className="d-block text-muted">Credit: {IndNumberFormat(dashboardData.totalCreditLimit)}</small>
-                    <small className="d-block text-muted">Wallet: {IndNumberFormat(dashboardData.totalWalletBalance)}</small>
-                  </div>
                   <div className="mt-2">
-                    <Link to={isAdminUser ? onBoardingPageUrl : allUserAccountUrl} className="btn btn-sm btn-primary mr-2">
-                      {isAdminUser ? 'Onboard' : 'Users'}
+                    <Link to={invoicePageUrl} className="btn btn-sm btn-primary mr-2">
+                      Invoices
                     </Link>
-                    <Link to={commissionControlUrl} className="btn btn-sm btn-outline-primary">
-                      Commission Control
+                    <Link to={posSaleUrl} className="btn btn-sm btn-outline-primary">
+                      Sell Product
                     </Link>
                   </div>
                 </div>
@@ -159,36 +206,43 @@ export const Home = () => {
           </div>
 
           <div className="row mt-2">
-            <div className="col-xl-6">
+            <div className="col-xl-7">
               <div className="card dashboard-table-card">
                 <div className="card-header d-flex justify-content-between">
-                  <h5 className="mb-0">Recent Users</h5>
-                  <Link to={allUserAccountUrl}>View all</Link>
+                  <h5 className="mb-0">Recent Order Transactions</h5>
+                  <Link to={invoicePageUrl}>View all</Link>
                 </div>
                 <div className="card-body p-0">
                   <div className="table-responsive table-ui-responsive">
                     <table className="table table-ui mb-0">
                       <thead>
                         <tr>
-                          <th>Name</th>
-                          <th>Email</th>
-                          <th>Role</th>
+                          <th>Date</th>
+                          <th>Product</th>
+                          <th>Mode</th>
+                          <th>Gross</th>
+                          <th>Payable</th>
+                          <th>Commission</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {dashboardData.users.slice(0, 5).map((user) => (
-                          <tr key={user?._id || user?.email}>
+                        {recentTransactions.map((item) => (
+                          <tr key={item?._id || item?.invoiceId}>
+                            <td>{formatDateTime(item?.createdAt)}</td>
                             <td>
-                              {user?.firstName || ''} {user?.lastName || ''}
+                              <div className="font-weight-bold">{item?.jewelCode || '-'}</div>
+                              <small className="text-muted">{item?.styleCode || '-'}</small>
                             </td>
-                            <td>{user?.email || '-'}</td>
-                            <td className="text-capitalize">{user?.role || '-'}</td>
+                            <td>{modeLabel(item?.choice || '')}</td>
+                            <td>Rs {IndNumberFormat(item?.finalPrice || 0)}</td>
+                            <td>Rs {IndNumberFormat(item?.amount || 0)}</td>
+                            <td>Rs {IndNumberFormat(item?.commissionDeduction || 0)}</td>
                           </tr>
                         ))}
-                        {dashboardData.users.length === 0 && (
+                        {recentTransactions.length === 0 && (
                           <tr>
-                            <td colSpan={3} className="text-center text-muted">
-                              No users available.
+                            <td colSpan={6} className="text-center text-muted">
+                              No transactions available.
                             </td>
                           </tr>
                         )}
@@ -199,36 +253,38 @@ export const Home = () => {
               </div>
             </div>
 
-            <div className="col-xl-6">
+            <div className="col-xl-5">
               <div className="card dashboard-table-card">
                 <div className="card-header d-flex justify-content-between">
-                  <h5 className="mb-0">Recent Commissions</h5>
-                  <Link to={commissionControlUrl}>View all</Link>
+                  <h5 className="mb-0">Memo Aging Report</h5>
                 </div>
                 <div className="card-body p-0">
                   <div className="table-responsive table-ui-responsive">
                     <table className="table table-ui mb-0">
                       <thead>
                         <tr>
-                          <th>Invoice</th>
                           <th>Product</th>
-                          <th>Amount</th>
-                          <th>Rate</th>
+                          <th>Holder</th>
+                          <th>Days</th>
+                          <th>Since</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {recentCommissions.map((item) => (
-                          <tr key={item?._id || `${item?.invoiceId}-${item?.productId}`}>
-                            <td>{item?.invoiceId || '-'}</td>
-                            <td>{item?.productId || '-'}</td>
-                            <td>₹{IndNumberFormat(item?.commissionAmount || 0)}</td>
-                            <td>{item?.commissionRate ?? '-'}%</td>
+                        {memoAging.map((item) => (
+                          <tr key={item?._id}>
+                            <td>
+                              <div className="font-weight-bold">{item?.jewelCode || '-'}</div>
+                              <small className="text-muted">{item?.styleCode || '-'}</small>
+                            </td>
+                            <td>{item?.holderName || '-'}</td>
+                            <td>{item?.memoDays || 0}d</td>
+                            <td>{formatDateTime(item?.memoSince)}</td>
                           </tr>
                         ))}
-                        {!recentCommissions.length && (
+                        {memoAging.length === 0 && (
                           <tr>
                             <td colSpan={4} className="text-center text-muted">
-                              No commission data available.
+                              No active memo products.
                             </td>
                           </tr>
                         )}
@@ -239,6 +295,57 @@ export const Home = () => {
               </div>
             </div>
           </div>
+
+          {isAdminUser && (
+            <div className="row mt-2">
+              <div className="col-xl-12">
+                <div className="card dashboard-table-card">
+                  <div className="card-header d-flex justify-content-between">
+                    <h5 className="mb-0">Recent Users</h5>
+                    <div>
+                      <Link to={allUserAccountUrl} className="mr-3">
+                        View all
+                      </Link>
+                      <Link to={onBoardingPageUrl}>Onboard</Link>
+                    </div>
+                  </div>
+                  <div className="card-body p-0">
+                    <div className="table-responsive table-ui-responsive">
+                      <table className="table table-ui mb-0">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>KYC</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dashboardData.users.slice(0, 6).map((user) => (
+                            <tr key={user?._id || user?.email}>
+                              <td>
+                                {user?.firstName || ''} {user?.lastName || ''}
+                              </td>
+                              <td>{user?.email || '-'}</td>
+                              <td className="text-capitalize">{user?.role || '-'}</td>
+                              <td>{user?.kycVerified ? 'Verified' : 'Pending'}</td>
+                            </tr>
+                          ))}
+                          {dashboardData.users.length === 0 && (
+                            <tr>
+                              <td colSpan={4} className="text-center text-muted">
+                                No users available.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

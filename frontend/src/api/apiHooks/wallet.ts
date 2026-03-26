@@ -1,25 +1,22 @@
 import { apiSlice } from '../apiSlice'
+import type { ApiResponse } from '../types'
 
-type IWalletResponse = {
-  status_code?: number
-  data?: {
-    wallet?: { walletBalance?: number; creditLimit?: number; usedCredit?: number }
-  }
-  message?: string
+type WalletPayload = {
+  wallet?: { walletBalance?: number; creditLimit?: number; usedCredit?: number }
 }
 
 export const walletApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    getMyWallet: builder.query<IWalletResponse, void>({
+    getMyWallet: builder.query<ApiResponse<WalletPayload>, void>({
       query: () => ({ url: '/wallet/me', method: 'GET' }),
       providesTags: ['Wallet'],
     }),
-    getWalletByUser: builder.query<IWalletResponse, string>({
+    getWalletByUser: builder.query<ApiResponse<WalletPayload>, string>({
       query: (userId) => ({ url: `/wallet/${userId}`, method: 'GET' }),
       providesTags: ['Wallet'],
     }),
     updateWallet: builder.mutation<
-      IWalletResponse,
+      ApiResponse<WalletPayload>,
       { userId: string; walletBalance?: number; creditLimit?: number; usedCredit?: number }
     >({
       query: ({ userId, ...payload }) => ({

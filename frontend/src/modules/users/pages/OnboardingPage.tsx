@@ -1,3 +1,3 @@
-import { UserOnboarding } from '../components/onboarding/UserOnboarding';
+import { UserOnboarding } from '../components';
 
 export const OnboardingPage = () => <UserOnboarding />;

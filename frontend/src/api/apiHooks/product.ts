@@ -1,14 +1,16 @@
 import { apiSlice } from '../apiSlice';
+import type { ApiResponse } from '../types';
 
-type TApiResponse = { status_code?: number; data?: any; message?: string; success?: boolean };
+type JsonRecord = Record<string, unknown>;
 export type TListProduct = {
   page?: number;
   limit?: number;
   search?: string;
-  usageType?: 'owner' | 'assigned' | 'pending' | 'rejected' | 'outright' | 'rented' | '';
+  usageType?: 'owner' | 'assigned' | 'pending' | 'rejected' | 'outright' | 'memo' | 'rented' | '';
   group?: string;
   subCategory?: string;
   metals?: string;
+  baseQualities?: string;
   diamonds?: string;
   minWeight?: number;
   maxWeight?: number;
@@ -22,7 +24,7 @@ export type TListProduct = {
   endDate?: string;
   includeAssignedClones?: boolean;
   includePending?: boolean;
-  sortBy?: 'createdAt' | 'jewelCode' | 'qty' | 'weight' | 'price';
+  sortBy?: 'createdAt' | 'jewelCode' | 'styleCode' | 'qty' | 'weight' | 'price' | 'livePrice';
   sortDir?: 'asc' | 'desc';
 };
 type TAssignProduct = {
@@ -49,16 +51,24 @@ type TListOtherRateChart = {
   category?: string;
   isActive?: boolean;
 };
-type IAcceptAssignedProduct = { id: string; mode: 'rent' | 'outright'; remark?: string };
+type IAcceptAssignedProduct = { id: string; mode: 'memo' | 'rent' | 'outright'; remark?: string };
 export const apiHooks = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    createProduct: builder.mutation<TApiResponse, any>({
+    createProduct: builder.mutation<ApiResponse, JsonRecord>({
       query: (body) => ({ url: '/product', method: 'POST', body }),
       invalidatesTags: ['Product'],
     }),
-    listProducts: builder.mutation<TApiResponse, TListProduct>({
+    listProducts: builder.mutation<ApiResponse, TListProduct>({
       query: (body) => ({
         url: '/product/list',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Product'],
+    }),
+    listMarketplaceProducts: builder.mutation<ApiResponse, TListProduct>({
+      query: (body) => ({
+        url: '/product/marketplace/list',
         method: 'POST',
         body,
       }),
@@ -69,17 +79,17 @@ export const apiHooks = apiSlice.injectEndpoints({
         url: '/product/export',
         method: 'POST',
         body,
-        responseHandler: (response) => response.blob(),
+        responseHandler: (response: Response) => response.blob(),
       }),
     }),
     exportProductSample: builder.query<Blob, void>({
       query: () => ({
         url: '/product/export/sample',
         method: 'GET',
-        responseHandler: (response) => response.blob(),
+        responseHandler: (response: Response) => response.blob(),
       }),
     }),
-    bulkDeleteProducts: builder.mutation<TApiResponse, { ids: string[] }>({
+    bulkDeleteProducts: builder.mutation<ApiResponse, { ids: string[] }>({
       query: (body) => ({
         url: '/product/bulk-delete',
         method: 'POST',
@@ -87,18 +97,18 @@ export const apiHooks = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Product'],
     }),
-    getProductFilter: builder.query<TApiResponse, void>({
+    getProductFilter: builder.query<ApiResponse, void>({
       query: () => ({
         url: `/product/filter`,
         method: 'GET',
       }),
       providesTags: ['Product'],
     }),
-    getProductById: builder.query<TApiResponse, string>({
+    getProductById: builder.query<ApiResponse, string>({
       query: (id) => ({ url: `/product/${id}`, method: 'GET' }),
       providesTags: ['Product'],
     }),
-    updateProduct: builder.mutation<TApiResponse, { id: string; payload: any }>({
+    updateProduct: builder.mutation<ApiResponse, { id: string; payload: JsonRecord }>({
       query: ({ id, payload }) => ({
         url: `/product/${id}`,
         method: 'PUT',
@@ -106,11 +116,11 @@ export const apiHooks = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Product'],
     }),
-    deleteProductById: builder.mutation<TApiResponse, string>({
+    deleteProductById: builder.mutation<ApiResponse, string>({
       query: (id) => ({ url: `/product/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Product'],
     }),
-    assignProductToJeweler: builder.mutation<TApiResponse, TAssignProduct>({
+    assignProductToJeweler: builder.mutation<ApiResponse, TAssignProduct>({
       query: ({ id, ...body }) => ({
         url: `/product/${id}/assign-to-jeweler`,
         method: 'PATCH',
@@ -118,8 +128,14 @@ export const apiHooks = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Product'],
     }),
+    previewAssignProduct: builder.mutation<ApiResponse, { id: string; jewelerId: string }>({
+      query: ({ id, jewelerId }) => ({
+        url: `/product/${id}/assign-preview/${jewelerId}`,
+        method: 'GET',
+      }),
+    }),
 
-    acceptAssignedProduct: builder.mutation<TApiResponse, IAcceptAssignedProduct>({
+    acceptAssignedProduct: builder.mutation<ApiResponse, IAcceptAssignedProduct>({
       query: ({ id, ...body }) => ({
         url: `/product/${id}/accept-assignment`,
         method: 'PATCH',
@@ -127,7 +143,7 @@ export const apiHooks = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Product'],
     }),
-    rejectAssignedProduct: builder.mutation<TApiResponse, { id: string; remark?: string }>({
+    rejectAssignedProduct: builder.mutation<ApiResponse, { id: string; remark?: string }>({
       query: ({ id, ...body }) => ({
         url: `/product/${id}/reject-assignment`,
         method: 'PATCH',
@@ -136,19 +152,19 @@ export const apiHooks = apiSlice.injectEndpoints({
       invalidatesTags: ['Product'],
     }),
 
-    createDiamondRateChart: builder.mutation<TApiResponse, any>({
+    createDiamondRateChart: builder.mutation<ApiResponse, JsonRecord>({
       query: (body) => ({ url: '/product/diamond-rate-chart', method: 'POST', body }),
       invalidatesTags: ['DiamondRateChart'],
     }),
-    listDiamondRateChart: builder.mutation<TApiResponse, TListDiamondRateChart>({
+    listDiamondRateChart: builder.mutation<ApiResponse, TListDiamondRateChart>({
       query: (body) => ({ url: '/product/diamond-rate-chart/list', method: 'POST', body }),
       invalidatesTags: ['DiamondRateChart'],
     }),
-    getDiamondRateChartById: builder.query<TApiResponse, string>({
+    getDiamondRateChartById: builder.query<ApiResponse, string>({
       query: (id) => ({ url: `/product/diamond-rate-chart/${id}`, method: 'GET' }),
       providesTags: ['DiamondRateChart'],
     }),
-    updateDiamondRateChart: builder.mutation<TApiResponse, { id: string; payload: any }>({
+    updateDiamondRateChart: builder.mutation<ApiResponse, { id: string; payload: JsonRecord }>({
       query: ({ id, payload }) => ({
         url: `/product/diamond-rate-chart/${id}`,
         method: 'PUT',
@@ -156,11 +172,11 @@ export const apiHooks = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['DiamondRateChart'],
     }),
-    deleteDiamondRateChart: builder.mutation<TApiResponse, string>({
+    deleteDiamondRateChart: builder.mutation<ApiResponse, string>({
       query: (id) => ({ url: `/product/diamond-rate-chart/${id}`, method: 'DELETE' }),
       invalidatesTags: ['DiamondRateChart'],
     }),
-    matchDiamondRateChart: builder.query<TApiResponse, { carat: number; clarity?: string; shape?: string }>({
+    matchDiamondRateChart: builder.query<ApiResponse, { carat: number; clarity?: string; shape?: string }>({
       query: ({ carat, clarity, shape }) => ({
         url: '/product/diamond-rate-chart/match',
         method: 'GET',
@@ -168,26 +184,26 @@ export const apiHooks = apiSlice.injectEndpoints({
       }),
       providesTags: ['DiamondRateChart'],
     }),
-    listMissingDiamondRates: builder.query<TApiResponse, void>({
+    listMissingDiamondRates: builder.query<ApiResponse, void>({
       query: () => ({
         url: '/product/diamond-rate-chart/missing',
         method: 'GET',
       }),
       providesTags: ['DiamondRateChart'],
     }),
-    createOtherRateChart: builder.mutation<TApiResponse, any>({
+    createOtherRateChart: builder.mutation<ApiResponse, JsonRecord>({
       query: (body) => ({ url: '/product/other-rate-chart', method: 'POST', body }),
       invalidatesTags: ['OtherRateChart'],
     }),
-    listOtherRateChart: builder.mutation<TApiResponse, TListOtherRateChart>({
+    listOtherRateChart: builder.mutation<ApiResponse, TListOtherRateChart>({
       query: (body) => ({ url: '/product/other-rate-chart/list', method: 'POST', body }),
       invalidatesTags: ['OtherRateChart'],
     }),
-    getOtherRateChartById: builder.query<TApiResponse, string>({
+    getOtherRateChartById: builder.query<ApiResponse, string>({
       query: (id) => ({ url: `/product/other-rate-chart/${id}`, method: 'GET' }),
       providesTags: ['OtherRateChart'],
     }),
-    updateOtherRateChart: builder.mutation<TApiResponse, { id: string; payload: any }>({
+    updateOtherRateChart: builder.mutation<ApiResponse, { id: string; payload: JsonRecord }>({
       query: ({ id, payload }) => ({
         url: `/product/other-rate-chart/${id}`,
         method: 'PUT',
@@ -195,7 +211,7 @@ export const apiHooks = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['OtherRateChart'],
     }),
-    deleteOtherRateChart: builder.mutation<TApiResponse, string>({
+    deleteOtherRateChart: builder.mutation<ApiResponse, string>({
       query: (id) => ({ url: `/product/other-rate-chart/${id}`, method: 'DELETE' }),
       invalidatesTags: ['OtherRateChart'],
     }),
@@ -205,10 +221,12 @@ export const apiHooks = apiSlice.injectEndpoints({
 export const {
   useCreateProductMutation,
   useListProductsMutation,
+  useListMarketplaceProductsMutation,
   useGetProductByIdQuery,
   useUpdateProductMutation,
   useDeleteProductByIdMutation,
   useAssignProductToJewelerMutation,
+  usePreviewAssignProductMutation,
 
   useCreateDiamondRateChartMutation,
   useListDiamondRateChartMutation,

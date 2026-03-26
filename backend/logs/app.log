@@ -1,18 +1,48 @@
-[2026-03-18T05:08:41.685Z] {"event":"product.assigned.clone","productId":"69b8d483281014273fead314","assignedProductId":"69ba3359a524d0e3486f454a","toUserId":"69aea3011d8f8b294568e768","qty":1}
-[2026-03-18T05:08:56.942Z] {"event":"accept-assignment.invoice.payload","productId":"69ba3359a524d0e3486f454a","hasEmail":true,"hasPhone":true,"amount":41754.25,"holderId":"69aea3011d8f8b294568e768","performedBy":"69aea3011d8f8b294568e768"}
-[2026-03-18T05:08:56.943Z] {"event":"invoice.create.attempt","productId":"69ba3359a524d0e3486f454a","type":"purchase","amount":41754.25,"hasEmail":true,"hasPhone":true}
-[2026-03-20T04:53:41.611Z] "Worker 29604 died"
-[2026-03-20T12:09:59.841Z] "Worker 28964 died"
-[2026-03-20T12:09:59.859Z] "Worker 25012 died"
-[2026-03-20T12:09:59.875Z] "Worker 8748 died"
-[2026-03-20T12:09:59.893Z] "Worker 8760 died"
-[2026-03-20T12:09:59.909Z] "Worker 1256 died"
-[2026-03-20T12:09:59.929Z] "Worker 4076 died"
-[2026-03-20T12:09:59.945Z] "Worker 28524 died"
-[2026-03-23T09:04:18.960Z] {"event":"inventory.request.created","requestId":"69c10212f668876c638faca9","userId":"69aea3011d8f8b294568e768","usageChoice":"RENT"}
-[2026-03-23T09:40:37.121Z] {"event":"inventory.request.created","requestId":"69c10a95e79dcad8efaf5702","userId":"69aea3011d8f8b294568e768","usageChoice":"RENT"}
-[2026-03-23T09:42:24.238Z] {"event":"inventory.request.created","requestId":"69c10b00e79dcad8efaf570c","userId":"69aea3011d8f8b294568e768","usageChoice":"RENT"}
-[2026-03-23T09:44:20.485Z] {"event":"inventory.request.created","requestId":"69c10b74e79dcad8efaf574c","userId":"69aea3011d8f8b294568e768","usageChoice":"RENT"}
-[2026-03-23T09:47:09.200Z] {"event":"product.assigned.clone","productId":"69c0eab87ac717d77d7119a4","assignedProductId":"69c10c1de79dcad8efaf5798","toUserId":"69aea3011d8f8b294568e768","qty":1}
-[2026-03-23T09:47:09.236Z] {"event":"product.status.updated","productId":"69c0eab87ac717d77d7119a4","previousStatus":"AVAILABLE","nextStatus":"AVAILABLE"}
-[2026-03-23T09:47:09.309Z] {"event":"inventory.product.assigned","productId":"69c0eab87ac717d77d7119a4","jewelerId":"69aea3011d8f8b294568e768","usageChoice":"PURCHASE","invoiceId":""}
+[2026-03-26T04:33:42.973Z] {"event":"product.status.updated","productId":"69c4b5c4e6738998cfe0d71e","previousStatus":"PURCHASE_PENDING_PAYMENT","nextStatus":"SOLD"}
+[2026-03-26T04:33:43.021Z] {"event":"pos.invoice.linked","invoiceId":"69c4b6fc6983a47531ae642a","jewelerId":"69aea3011d8f8b294568e768","productId":"69c4b5c4e6738998cfe0d71e","grossAmount":29307.28,"payableAmount":22410.36,"commissionTotal":6896.92}
+[2026-03-26T04:33:43.023Z] {"event":"pos.sale.completed","invoiceId":"69c4b6fc6983a47531ae642a","productId":"69c4b5c4e6738998cfe0d71e","salePrice":38099.457812,"payableAmount":22410.36,"commissionTotal":6896.92,"choice":"PURCHASE"}
+[2026-03-26T05:24:40.112Z] {"event":"product.status.updated","productId":"69c4bf83b35ce17cfe88b7a3","previousStatus":"PURCHASE_PENDING_PAYMENT","nextStatus":"SOLD"}
+[2026-03-26T05:24:40.135Z] {"event":"pos.invoice.linked","invoiceId":"69c4bfcbb35ce17cfe88b8f4","jewelerId":"69aea3011d8f8b294568e768","productId":"69c4bf83b35ce17cfe88b7a3","grossAmount":38589.8,"payableAmount":29378.25,"commissionTotal":9211.55}
+[2026-03-26T05:24:40.136Z] {"event":"pos.sale.completed","invoiceId":"69c4bfcbb35ce17cfe88b8f4","productId":"69c4bf83b35ce17cfe88b7a3","salePrice":38589.799586,"payableAmount":29378.25,"commissionTotal":9211.55,"choice":"PURCHASE"}
+[2026-03-26T05:24:40.197Z] {"event":"product.assigned.holder","productId":"69c4bf83b35ce17cfe88b7a1","assignedProductId":"69c4bf83b35ce17cfe88b7a1","toUserId":"69aea3011d8f8b294568e768","toRole":"jeweler"}
+[2026-03-26T05:24:40.198Z] {"event":"pos.product.assigned","productId":"69c4bf83b35ce17cfe88b7a1","jewelerId":"69aea3011d8f8b294568e768","performedBy":"69aea3011d8f8b294568e768"}
+[2026-03-26T05:30:17.793Z] {"event":"product.status.updated","productId":"69c4bf83b35ce17cfe88b7a1","previousStatus":"RENTED","nextStatus":"SOLD"}
+[2026-03-26T05:30:17.810Z] {"event":"pos.invoice.created","invoiceId":"69c4c469be728bbf71576897","jewelerId":"69aea3011d8f8b294568e768","productId":"69c4bf83b35ce17cfe88b7a1","grossAmount":38717.15,"payableAmount":38717.15,"commissionTotal":0}
+[2026-03-26T05:30:17.811Z] {"event":"pos.sale.completed","invoiceId":"69c4c469be728bbf71576897","productId":"69c4bf83b35ce17cfe88b7a1","salePrice":38717.149614,"payableAmount":38717.15,"commissionTotal":0,"choice":"MEMO"}
+[2026-03-26T05:30:17.869Z] {"event":"product.assigned.holder","productId":"69c4bf83b35ce17cfe88b7a2","assignedProductId":"69c4bf83b35ce17cfe88b7a2","toUserId":"69aea3011d8f8b294568e768","toRole":"jeweler"}
+[2026-03-26T05:30:17.871Z] {"event":"pos.product.assigned","productId":"69c4bf83b35ce17cfe88b7a2","jewelerId":"69aea3011d8f8b294568e768","performedBy":"69aea3011d8f8b294568e768"}
+[2026-03-26T07:01:21.807Z] {"event":"product.status.updated","productId":"69c4d95b4ffa041ce77fa761","previousStatus":"RENTED","nextStatus":"SOLD"}
+[2026-03-26T07:01:21.842Z] {"event":"pos.invoice.created","invoiceId":"69c4d9c14ffa041ce77fa8f0","jewelerId":"69aea3011d8f8b294568e768","productId":"69c4d95b4ffa041ce77fa761","grossAmount":22051.94,"payableAmount":22051.94,"commissionTotal":0}
+[2026-03-26T07:01:21.844Z] {"event":"pos.sale.completed","invoiceId":"69c4d9c14ffa041ce77fa8f0","productId":"69c4d95b4ffa041ce77fa761","salePrice":22051.938168,"payableAmount":22051.94,"commissionTotal":0,"choice":"MEMO"}
+[2026-03-26T07:01:21.933Z] {"event":"product.assigned.holder","productId":"69c4d95b4ffa041ce77fa756","assignedProductId":"69c4d95b4ffa041ce77fa756","toUserId":"69aea3011d8f8b294568e768","toRole":"jeweler"}
+[2026-03-26T07:01:21.935Z] {"event":"pos.product.assigned","productId":"69c4d95b4ffa041ce77fa756","jewelerId":"69aea3011d8f8b294568e768","performedBy":"69aea3011d8f8b294568e768"}
+[2026-03-26T07:01:23.484Z] {"event":"product.status.updated","productId":"69c4d95b4ffa041ce77fa762","previousStatus":"PURCHASE_PENDING_PAYMENT","nextStatus":"SOLD"}
+[2026-03-26T07:01:23.505Z] {"event":"pos.invoice.linked","invoiceId":"69c4d98d4ffa041ce77fa89e","jewelerId":"69aea3011d8f8b294568e768","productId":"69c4d95b4ffa041ce77fa762","grossAmount":43805.63,"payableAmount":37944.15,"commissionTotal":5861.48}
+[2026-03-26T07:01:23.506Z] {"event":"pos.sale.completed","invoiceId":"69c4d98d4ffa041ce77fa89e","productId":"69c4d95b4ffa041ce77fa762","salePrice":43805.625916000005,"payableAmount":37944.15,"commissionTotal":5861.48,"choice":"PURCHASE"}
+[2026-03-26T07:01:23.565Z] {"event":"ticket.created","ticketId":"69c4d9c34ffa041ce77fa943","requestedBy":"69aea3011d8f8b294568e768","assignedTo":"","productId":""}
+[2026-03-26T07:01:23.568Z] {"event":"pos.ticket.created","jewelerId":"69aea3011d8f8b294568e768","reason":"no-stock"}
+[2026-03-26T07:01:26.283Z] {"event":"product.status.updated","productId":"69c4d95b4ffa041ce77fa763","previousStatus":"PURCHASE_PENDING_PAYMENT","nextStatus":"SOLD"}
+[2026-03-26T07:01:26.305Z] {"event":"pos.invoice.linked","invoiceId":"69c4d98e4ffa041ce77fa8c0","jewelerId":"69aea3011d8f8b294568e768","productId":"69c4d95b4ffa041ce77fa763","grossAmount":41596.54,"payableAmount":35777.89,"commissionTotal":5818.65}
+[2026-03-26T07:01:26.307Z] {"event":"pos.sale.completed","invoiceId":"69c4d98e4ffa041ce77fa8c0","productId":"69c4d95b4ffa041ce77fa763","salePrice":41596.541584000006,"payableAmount":35777.89,"commissionTotal":5818.65,"choice":"PURCHASE"}
+[2026-03-26T07:01:26.361Z] {"event":"ticket.created","ticketId":"69c4d9c64ffa041ce77fa97e","requestedBy":"69aea3011d8f8b294568e768","assignedTo":"","productId":""}
+[2026-03-26T07:01:26.363Z] {"event":"pos.ticket.created","jewelerId":"69aea3011d8f8b294568e768","reason":"no-stock"}
+[2026-03-26T08:59:07.246Z] {"event":"product.status.updated","productId":"69c4f235d6d7d04b6db2e91d","previousStatus":"RENTED","nextStatus":"SOLD"}
+[2026-03-26T08:59:07.332Z] {"event":"pos.invoice.created","invoiceId":"69c4f55b2cb25a4ad83fde9e","jewelerId":"69aea3011d8f8b294568e768","productId":"69c4f235d6d7d04b6db2e91d","grossAmount":43127.08,"payableAmount":42363.08,"commissionTotal":764}
+[2026-03-26T08:59:07.335Z] {"event":"pos.sale.completed","invoiceId":"69c4f55b2cb25a4ad83fde9e","productId":"69c4f235d6d7d04b6db2e91d","salePrice":43127.078305999996,"payableAmount":42363.08,"commissionTotal":764,"choice":"MEMO"}
+[2026-03-26T08:59:07.535Z] {"event":"ticket.created","ticketId":"69c4f55b2cb25a4ad83fdebb","requestedBy":"69aea3011d8f8b294568e768","assignedTo":"","productId":""}
+[2026-03-26T08:59:07.538Z] {"event":"pos.ticket.created","jewelerId":"69aea3011d8f8b294568e768","reason":"no-stock"}
+[2026-03-26T09:03:38.678Z] {"event":"product.status.updated","productId":"69c4f235d6d7d04b6db2e91e","previousStatus":"PURCHASE_PENDING_PAYMENT","nextStatus":"SOLD"}
+[2026-03-26T09:03:38.761Z] {"event":"pos.invoice.linked","invoiceId":"69c4f5112cb25a4ad83fde76","jewelerId":"69aea3011d8f8b294568e768","productId":"69c4f235d6d7d04b6db2e91e","grossAmount":40991.26,"payableAmount":39925.96,"commissionTotal":1065.3}
+[2026-03-26T09:03:38.764Z] {"event":"pos.sale.completed","invoiceId":"69c4f5112cb25a4ad83fde76","productId":"69c4f235d6d7d04b6db2e91e","salePrice":40991.257944000004,"payableAmount":39925.96,"commissionTotal":1065.3,"choice":"PURCHASE"}
+[2026-03-26T09:03:38.987Z] {"event":"ticket.created","ticketId":"69c4f66a2cb25a4ad83fdfa1","requestedBy":"69aea3011d8f8b294568e768","assignedTo":"","productId":""}
+[2026-03-26T09:03:38.989Z] {"event":"pos.ticket.created","jewelerId":"69aea3011d8f8b294568e768","reason":"no-stock"}
+[2026-03-26T09:10:50.562Z] {"event":"product.status.updated","productId":"69c4f7402cb25a4ad83fe079","previousStatus":"RENTED","nextStatus":"SOLD"}
+[2026-03-26T09:10:50.654Z] {"event":"pos.invoice.created","invoiceId":"69c4f81a2cb25a4ad83fe1f9","jewelerId":"69aea3011d8f8b294568e768","productId":"69c4f7402cb25a4ad83fe079","grossAmount":38445.76,"payableAmount":37461.16,"commissionTotal":984.6}
+[2026-03-26T09:10:50.657Z] {"event":"pos.sale.completed","invoiceId":"69c4f81a2cb25a4ad83fe1f9","productId":"69c4f7402cb25a4ad83fe079","salePrice":38445.763746,"payableAmount":37461.16,"commissionTotal":984.6,"choice":"MEMO"}
+[2026-03-26T09:10:50.722Z] {"event":"ticket.created","ticketId":"69c4f81a2cb25a4ad83fe218","requestedBy":"69aea3011d8f8b294568e768","assignedTo":"","productId":""}
+[2026-03-26T09:10:50.725Z] {"event":"pos.ticket.created","jewelerId":"69aea3011d8f8b294568e768","reason":"no-stock"}
+[2026-03-26T09:10:52.694Z] {"event":"product.status.updated","productId":"69c4f7402cb25a4ad83fe07e","previousStatus":"RENTED","nextStatus":"SOLD"}
+[2026-03-26T09:10:52.716Z] {"event":"pos.invoice.created","invoiceId":"69c4f81c2cb25a4ad83fe230","jewelerId":"69aea3011d8f8b294568e768","productId":"69c4f7402cb25a4ad83fe07e","grossAmount":40991.26,"payableAmount":39925.96,"commissionTotal":1065.3}
+[2026-03-26T09:10:52.718Z] {"event":"pos.sale.completed","invoiceId":"69c4f81c2cb25a4ad83fe230","productId":"69c4f7402cb25a4ad83fe07e","salePrice":40991.257944000004,"payableAmount":39925.96,"commissionTotal":1065.3,"choice":"MEMO"}
+[2026-03-26T09:10:52.767Z] {"event":"ticket.created","ticketId":"69c4f81c2cb25a4ad83fe255","requestedBy":"69aea3011d8f8b294568e768","assignedTo":"","productId":""}
+[2026-03-26T09:10:52.769Z] {"event":"pos.ticket.created","jewelerId":"69aea3011d8f8b294568e768","reason":"no-stock"}

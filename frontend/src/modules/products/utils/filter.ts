@@ -1,7 +1,20 @@
 import { FilterState, Bounds } from './type';
 
+export const NONE_FACET_TOKEN = '__NONE__';
+
 export const regexOr = (values: string[]): string => {
   return values.length ? values.join('|') : '';
+};
+
+export const encodeFacetFilter = (values: string[], noneLabel?: string): string => {
+  if (!values?.length) return '';
+  const cleaned = values.map((value) => `${value || ''}`.trim()).filter(Boolean);
+  if (!cleaned.length) return '';
+  if (!noneLabel) return cleaned.join('|');
+
+  return cleaned
+    .map((value) => (value.toLowerCase() === noneLabel.toLowerCase() ? NONE_FACET_TOKEN : value))
+    .join('|');
 };
 
 export const calculateSliderBackground = (min: number, max: number, from: number, to: number): string => {
@@ -40,6 +53,7 @@ export const countActiveFilters = (filters: FilterState): number => {
   let count = 0;
   if (filters.search) count++;
   count += filters.metals.length;
+  count += filters.baseQualities.length;
   count += filters.diamonds.length;
   count += filters.category.length;
   count += filters.subCategory.length;

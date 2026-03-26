@@ -1,4 +1,4 @@
-import { NotificationApi } from '@api/api.index';
+import { NotificationApi } from '@api/index';
 import { isAdminRole } from '@shared/utils/roles';
 
 export type UserLike = {
@@ -51,10 +51,6 @@ export const useUserNotifications = (user: UserLike | undefined) => {
 
   const notifications = [...adminNotifications];
 
-  return {
-    notifications,
-    totalNotificationCount: notifications.length,
-    isFetching,
-    refetch,
-  };
+  return { notifications, totalNotificationCount: notifications.length, isFetching, refetch };
 };
+

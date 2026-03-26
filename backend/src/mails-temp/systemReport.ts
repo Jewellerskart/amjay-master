@@ -3,7 +3,7 @@ import { mailLayout } from './baseTemplate'
 export const SystemReportMail = ({ subject, message }: any) =>
   mailLayout({
     title: subject || 'System Report',
-    subtitle: 'Generated from Jewel Days system monitoring.',
+    subtitle: 'Generated from AMJAY system monitoring.',
     contentHtml: `
       <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px;">
         <p style="margin:0;font-size:14px;line-height:1.6;color:#374151;">

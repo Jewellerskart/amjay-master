@@ -1,5 +1,5 @@
 import cron from 'node-cron'
-import { TicketModel } from '../module/ticket/model/ticket.schema'
+import { TicketModel } from '../modules/ticket/model/ticket.schema'
 import { customLog } from '../utils/common'
 
 export const runTicketEscalationCron = () => {
@@ -32,3 +32,4 @@ export const runTicketEscalationCron = () => {
     }
   })
 }
+

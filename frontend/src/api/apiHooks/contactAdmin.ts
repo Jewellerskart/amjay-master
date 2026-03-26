@@ -1,11 +1,10 @@
 import { apiSlice } from '../apiSlice';
-
-type TApiResponse = { status_code?: number; data?: any; message?: string; success?: boolean };
+import type { ApiResponse } from '../types';
 
 export const contactAdminApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     createContactQuery: builder.mutation<
-      TApiResponse,
+      ApiResponse,
       {
         subject: string;
         message: string;
@@ -41,7 +40,7 @@ export const contactAdminApi = apiSlice.injectEndpoints({
       },
       invalidatesTags: ['Contact', 'Notification'],
     }),
-    getMyContactQueries: builder.query<TApiResponse, void>({
+    getMyContactQueries: builder.query<ApiResponse, void>({
       query: () => ({
         url: '/contact-admin/query/my',
         method: 'GET',
@@ -49,7 +48,7 @@ export const contactAdminApi = apiSlice.injectEndpoints({
       providesTags: ['Contact'],
     }),
     getAllContactQueries: builder.mutation<
-      TApiResponse,
+      ApiResponse,
       { status?: string; search?: string; startDate?: string; endDate?: string; page?: number; limit?: number }
     >({
       query: (body) => ({
@@ -59,7 +58,7 @@ export const contactAdminApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Contact'],
     }),
-    getAssignableContactUsers: builder.query<TApiResponse, void>({
+    getAssignableContactUsers: builder.query<ApiResponse, void>({
       query: () => ({
         url: '/contact-admin/query/assignees',
         method: 'GET',
@@ -67,7 +66,7 @@ export const contactAdminApi = apiSlice.injectEndpoints({
       providesTags: ['Contact'],
     }),
     updateContactQueryStatus: builder.mutation<
-      TApiResponse,
+      ApiResponse,
       { id: string; status: string; remark?: string; deadlineAt?: string; assignedToUserId?: string | null }
     >({
       query: ({ id, ...body }) => ({

@@ -1,6 +1,6 @@
 export type ProductStatus = 'AVAILABLE' | 'ASSIGNED' | 'RENTED' | 'PURCHASE_PENDING_PAYMENT' | 'ACTIVE' | 'INACTIVE' | 'SOLD' | '';
 
-export type UsageType = 'owner' | 'assigned' | 'pending' | 'rejected' | 'outright' | 'rented' | '';
+export type UsageType = 'owner' | 'assigned' | 'pending' | 'rejected' | 'outright' | 'memo' | 'rented' | '';
 
 export type HolderRole = 'super-admin' | 'admin' | 'distributor' | 'jeweler' | '';
 export interface ActiveFiltersProps {
@@ -60,6 +60,15 @@ export interface Facets {
 }
 
 export type FacetKey = 'metals' | 'baseQualities' | 'diamonds' | 'category' | 'subCategory';
+export interface JewelCodeGroupItem {
+  productId: string;
+  jewelCode: string;
+  qty: number;
+  finalPrice?: number;
+  liveMetal?: number;
+  image?: string;
+  status?: string;
+}
 export type ProductCardProps = {
   product?: any;
   onInquiry?: () => void;
@@ -88,6 +97,8 @@ export interface Product {
   finalPrice: any;
   liveMetal: any;
   _id: string;
+  qty?: number;
+  styleCode?: string;
   product?: {
     transNo?: string;
     orderNo?: string;
@@ -143,11 +154,11 @@ export interface Product {
   };
   image?: string | null;
   media?: string[];
-  _origin?: string;
-  origin?: string;
   parentProductId?: string;
-  rootProductId?: string;
   childCount?: number;
+  totalQty?: number;
+  totalItems?: number;
+  jewelCodes?: JewelCodeGroupItem[];
   category?: {
     group?: string;
     subCategory?: string;

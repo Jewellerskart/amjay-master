@@ -1,0 +1,44 @@
+@use '../abstracts/variables' as *;
+
+.inventory-requests-page {
+  --inventory-surface-start: #f8fbff;
+  --inventory-surface-end: #ffffff;
+  --inventory-border: #dde6f2;
+  --inventory-accent: #0d6efd;
+  background: linear-gradient(180deg, var(--inventory-surface-start) 0%, var(--inventory-surface-end) 44%);
+}
+
+.inventory-requests-page .card {
+  border: 1px solid var(--inventory-border);
+  border-radius: 14px;
+}
+
+.inventory-requests-page .inventory-assign-panel .inventory-assign-summary {
+  border: 1px solid #d6e7ff;
+  background: #f6faff;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.inventory-requests-page .inventory-requests-table-card .table th {
+  white-space: nowrap;
+  background: #f7f9fc;
+}
+
+.inventory-requests-page .inventory-requests-table-card .table td {
+  vertical-align: middle;
+}
+
+.inventory-requests-page .inventory-requests-table-card .table tbody tr:hover {
+  background: rgba(13, 110, 253, 0.04);
+}
+
+.inventory-requests-page .inventory-qty-progress {
+  min-width: 220px;
+}
+
+@media (max-width: 767px) {
+  .inventory-requests-page .inventory-qty-progress {
+    min-width: 170px;
+  }
+}

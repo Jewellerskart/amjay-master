@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { AuthApi } from '@api/api.index';
+import { AuthApi } from '@api/index';
 import { useAuthSellerLogin } from '@hooks/sellerAuth';
 import {
   allUserAccountUrl,
@@ -149,11 +149,11 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
           <div className={`header-shell ${isMobileNavOpen || isAccountOpen ? 'island-expanded' : ''}`}>
             <div className="header-left">
               <Link to={dashboardPageUrl} className="brand-logo">
-                <img className="logo-abbr" src="https://www.manijewel.com/assets/images/logo.png" alt="Mani Jewel" />
-                <div className="brand-title">
-                  <h3 className="m-0">Jewel POS</h3>
+                <img className="logo-abbr" src="/logo/amjay-logo-1.png" alt="AMJAY" />
+                {/* <div className="brand-title">
+                  <h3 className="m-0">AMJAY POS</h3>
                   <p className="m-0 brand-subtitle">Smart Retail Console</p>
-                </div>
+                </div> */}
               </Link>
             </div>
 
@@ -221,9 +221,6 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                       <>
                         <NavLink to={ProductListUrl} className="header-dropdown-item">
                           Product List
-                        </NavLink>
-                        <NavLink to="/products/bulk-upload" className="header-dropdown-item">
-                          Bulk Upload
                         </NavLink>
                         <NavLink to={rateChartsUrl} className="header-dropdown-item">
                           Rate Charts
@@ -462,9 +459,6 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                         <>
                           <NavLink to={ProductListUrl} className="mobile-nav-link">
                             Product List
-                          </NavLink>
-                          <NavLink to="/products/bulk-upload" className="mobile-nav-link">
-                            Bulk Upload
                           </NavLink>
                           <NavLink to={rateChartsUrl} className="mobile-nav-link">
                             Rate Charts

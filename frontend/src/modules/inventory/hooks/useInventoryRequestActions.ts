@@ -18,7 +18,7 @@ type UpdateStatusPayload = { id: string; payload: { status: InventoryRequestStat
 
 type AssignProductPayload = {
   id: string;
-  payload: { productId: string; jewelerId: string; usageChoice: InventoryUsageChoice; amount?: number; remark?: string };
+  payload: { productId: string; jewelerId: string; usageChoice: InventoryUsageChoice; remark?: string };
 };
 
 interface UseInventoryRequestActionsParams {
@@ -49,8 +49,14 @@ const initialAssignControl: InventoryAssignControlState = {
   productId: '',
   styleCode: '',
   usageChoice: 'PURCHASE',
-  amount: '',
   remark: '',
+};
+
+const getRequestProgress = (request?: InventoryRequestRecord) => {
+  const required = Math.max(1, Number(request?.requiredProducts || 1));
+  const assigned = Math.min(required, Math.max(0, Number(request?.assignedCount ?? request?.assignedProductIds?.length ?? 0)));
+  const pending = Math.max(0, required - assigned);
+  return { required, assigned, pending };
 };
 
 export const useInventoryRequestActions = ({ requests, createInventoryRequest, updateInventoryRequestStatus, assignProductToRequest, loadAvailableProducts, refetchRequests }: UseInventoryRequestActionsParams) => {
@@ -60,10 +66,13 @@ export const useInventoryRequestActions = ({ requests, createInventoryRequest, u
 
   const statusIdOptions = useMemo(
     () =>
-      requests.map((req) => ({
-        id: req._id,
-        label: `${req._id.substring(0, 6)} | ${req.styleCode || 'STYLE'} | ${req.usageChoice} | ${req.status}`,
-      })),
+      requests.map((req) => {
+        const progress = getRequestProgress(req);
+        return {
+          id: req._id,
+          label: `${req._id.substring(0, 6)} | ${req.styleCode || 'STYLE'} | ${progress.assigned}/${progress.required} | ${req.status}`,
+        };
+      }),
     [requests],
   );
 
@@ -115,7 +124,8 @@ export const useInventoryRequestActions = ({ requests, createInventoryRequest, u
       if (key === 'requestId') {
         const selected = requests.find((req) => req._id === value);
         const styleCode = selected?.styleCode || '';
-        setAssignControl((prev) => ({ ...prev, requestId: value as string, styleCode, productId: '' }));
+        const usageChoice = selected?.usageChoice || 'PURCHASE';
+        setAssignControl((prev) => ({ ...prev, requestId: value as string, styleCode, usageChoice, productId: '' }));
         await loadAvailableProducts({ page: 1, limit: 15, styleCode });
         return;
       }
@@ -134,6 +144,11 @@ export const useInventoryRequestActions = ({ requests, createInventoryRequest, u
       }
 
       const targetRequest = requests.find((req) => req._id === assignControl.requestId);
+      const progress = getRequestProgress(targetRequest);
+      if (progress.pending <= 0) {
+        toast.error('This request is already fulfilled');
+        return;
+      }
       const targetJewelerId = targetRequest?.requestedBy || '';
       if (!targetJewelerId) {
         toast.error('Cannot determine jeweler for this request');
@@ -143,17 +158,19 @@ export const useInventoryRequestActions = ({ requests, createInventoryRequest, u
         productId: targetProductId,
         jewelerId: targetJewelerId,
         usageChoice: assignControl.usageChoice,
-        amount: assignControl.amount ? Number(assignControl.amount) : undefined,
         remark: assignControl.remark,
       };
       try {
         await assignProductToRequest({ id: assignControl.requestId, payload }).unwrap();
         toast.success('Product assigned to jeweler');
 
-        setAssignControl(initialAssignControl);
-
         await loadAvailableProducts({ page: 1, limit: 15, styleCode: targetRequest?.styleCode });
         await refetchRequests();
+        setAssignControl((prev) => ({
+          ...prev,
+          productId: '',
+          remark: '',
+        }));
       } catch (error: any) {
         toast.error(error?.data?.message || 'Failed to assign product');
       }

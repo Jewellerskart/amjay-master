@@ -9,7 +9,7 @@ export const LandingPage = () => {
         <header>
           <div className="container">
             <a href="#" className="logo mt-5">
-              <img src={`${FRONTEND_URL}/images/logo.png`} />
+              <img src={`${FRONTEND_URL}/logo/amjay-logo-1.png`} />
             </a>
             <ul className="links">
               <li>Home</li>

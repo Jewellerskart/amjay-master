@@ -5,58 +5,87 @@ import { useAuthSellerLogin } from '@hooks/sellerAuth';
 import { ProductListUrl } from '@variable';
 import { useMyInventory } from '../hooks/useMyInventory';
 import { UrlTablePagination } from '@common/TablePagination';
-import { useUrlParams } from '@hooks/useUrlParams';
+import { useUrlPagination } from '@hooks/useUrlPagination';
 import { IndNumberFormat } from '@utils/formateDate';
+import { resolveProductPricing } from '../../products/utils/pricing';
 
-type AcceptMode = 'rent' | 'outright';
+type AcceptMode = 'memo' | 'outright';
 type InventoryParam = {
   item: any;
   index: number;
   page: number;
   limit: number;
   actionable: boolean;
+  canMarkSold: boolean;
   selectedMode: AcceptMode;
   isAccepting: boolean;
   isRejecting: boolean;
+  isSelling: boolean;
   onModeChange: (mode: AcceptMode) => void;
   onAccept: () => void;
   onReject: () => void;
+  onMarkSold: () => void;
 };
 
 const EmptyState = ({ message }: { message: string }) => (
   <tr>
-    <td colSpan={9} className="text-muted py-4">
+    <td colSpan={11} className="text-muted py-4">
       {message}
     </td>
   </tr>
 );
 
-const InventoryRow = ({ item, index, page, limit, actionable, selectedMode, isAccepting, isRejecting, onModeChange, onAccept, onReject }: InventoryParam) => {
+const getUsageLabel = (usage?: string) => {
+  const key = `${usage || ''}`.trim().toLowerCase();
+  if (key === 'memo' || key === 'rented' || key === 'rent') return 'Memo';
+  if (key === 'outright') return 'Outright';
+  if (!key) return '-';
+  return key;
+};
+
+const getStatusLabel = (status?: string) => {
+  const key = `${status || ''}`.trim().toUpperCase();
+  if (key === 'RENTED') return 'MEMO';
+  if (key === 'PURCHASE_PENDING_PAYMENT') return 'PURCHASE PENDING PAYMENT';
+  return key || '-';
+};
+
+const InventoryRow = ({ item, index, page, limit, actionable, canMarkSold, selectedMode, isAccepting, isRejecting, isSelling, onModeChange, onAccept, onReject, onMarkSold }: InventoryParam) => {
   const rowNumber = (page - 1) * limit + index + 1;
+  const pricing = resolveProductPricing(item);
+  const netWeight = Number(item?.weight?.netWeight);
+  const diamondCt = Number(item?.diamond?.weight);
+
   return (
     <tr>
       <td>{rowNumber}</td>
-      <td>{item.product.jewelCode || '-'}</td>
-      <td>{item.product.styleCode || '-'}</td>
-      <td>{IndNumberFormat(item.finalPrice)}</td>
-      <td className="p-0">{item.image ? <img src={item.image} alt={item.jewelCode || 'Product'} width={50} height={50} loading="lazy" className="object-fit-cover" /> : '-'}</td>
+      <td>{item?.product?.jewelCode || '-'}</td>
+      <td>{item?.product?.styleCode || '-'}</td>
+      <td>{Number.isFinite(netWeight) ? netWeight : '-'}</td>
+      <td>{Number.isFinite(diamondCt) ? diamondCt : '-'}</td>
+      <td>{IndNumberFormat(pricing.finalPrice)}</td>
+      <td className="p-0">{item.image ? <img src={item.image} alt={item?.product?.jewelCode || 'Product'} width={50} height={50} loading="lazy" className="object-fit-cover" /> : '-'}</td>
       <td>{item.qty || 0}</td>
-      <td className="text-capitalize">{item.status?.toLowerCase() || '-'}</td>
-      <td className="text-capitalize">{item?.usage?.type?.toLowerCase() || '-'}</td>
+      <td>{getStatusLabel(item.status)}</td>
+      <td>{getUsageLabel(item?.usage?.type || item?.usageType)}</td>
       <td>
         {actionable ? (
           <div className="d-flex flex-wrap align-items-center justify-content-center gap-2">
             <select className="form-control form-control-sm" style={{ width: 130, minHeight: '35px' }} value={selectedMode} onChange={(e) => onModeChange(e.target.value as AcceptMode)} disabled={isAccepting || isRejecting}>
-              <option value="rent">Accept as Rent</option>
+              <option value="memo">Accept as Memo</option>
               <option value="outright">Accept Outright</option>
             </select>
-            <button className="btn btn-success btn-sm" onClick={onAccept} disabled={isAccepting || isRejecting} aria-label={`Accept ${item.jewelCode}`}>
+            <button className="btn btn-success btn-sm" onClick={onAccept} disabled={isAccepting || isRejecting} aria-label={`Accept ${item?.product?.jewelCode || item?._id}`}>
               {isAccepting ? 'Accepting...' : 'Accept'}
             </button>
-            <button className="btn btn-outline-danger btn-sm" onClick={onReject} disabled={isRejecting || isAccepting} aria-label={`Reject ${item.jewelCode}`}>
+            <button className="btn btn-outline-danger btn-sm" onClick={onReject} disabled={isRejecting || isAccepting} aria-label={`Reject ${item?.product?.jewelCode || item?._id}`}>
               {isRejecting ? 'Rejecting...' : 'Reject'}
             </button>
           </div>
+        ) : canMarkSold ? (
+          <button className="btn btn-outline-primary btn-sm" onClick={onMarkSold} disabled={isSelling} aria-label={`Mark ${item?.product?.jewelCode || item?._id} sold`}>
+            {isSelling ? 'Processing...' : 'Mark Sold'}
+          </button>
         ) : (
           <span className="text-muted">-</span>
         )}
@@ -75,22 +104,7 @@ type InventoryPageProps = {
 
 const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescription }: InventoryPageProps) => {
   const { data: user } = useAuthSellerLogin();
-  const { page, limit, setSearchParams } = useUrlParams();
-
-  const setUrlPage = (next: number) =>
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      params.set('page', String(next));
-      return params;
-    });
-
-  const setUrlLimit = (next: number) =>
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      params.set('limit', String(next || 10));
-      params.set('page', '1');
-      return params;
-    });
+  const { page, limit, setPage: setUrlPage, setLimit: setUrlLimit } = useUrlPagination();
 
   const isAdminLike = useMemo(() => {
     const role = `${user?.role || ''}`.toLowerCase();
@@ -101,21 +115,24 @@ const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescriptio
     list: { items, total, isLoading },
     pagination: { setPage },
     searchState: { search, setSearch, loadInventory },
-    responses: { acceptModeById, setAcceptModeById, onAccept, onReject, isAccepting, isRejecting, canRespond },
+    responses: { acceptModeById, setAcceptModeById, onAccept, onReject, onMarkSold, isAccepting, isRejecting, isSelling, canRespond },
   } = useMyInventory(user, view, {
     page,
     limit,
     onPageChange: setUrlPage,
     onLimitChange: setUrlLimit,
   });
+  const runSearch = useCallback(() => {
+    setPage(1);
+    loadInventory({ page: 1, search });
+  }, [setPage, loadInventory, search]);
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      setPage(1);
-      loadInventory({ page: 1, search });
+      runSearch();
     },
-    [setPage, loadInventory, search],
+    [runSearch],
   );
 
   const handleReset = useCallback(() => {
@@ -124,15 +141,21 @@ const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescriptio
     loadInventory({ page: 1, search: '' });
   }, [setSearch, setPage, loadInventory]);
 
-  const rowsData = useMemo(
-    () =>
-      items.map((item) => ({
+  const rowsData = useMemo(() => {
+    return items.map((item) => {
+      const statusKey = `${item?.status || ''}`.toUpperCase();
+      const usageKey = `${item?.usage?.type || item?.usageType || ''}`.toLowerCase();
+      const canSellOutright = usageKey === 'outright' && (statusKey === 'ACTIVE' || statusKey === 'PURCHASE_PENDING_PAYMENT');
+      const canSellMemo = (usageKey === 'memo' || usageKey === 'rented' || usageKey === 'rent') && statusKey === 'RENTED';
+      const canMarkSold = view === 'accepted' && (canSellOutright || canSellMemo);
+      return {
         item,
-        selectedMode: acceptModeById[item._id] || 'rent',
+        selectedMode: acceptModeById[item._id] || 'memo',
         actionable: !!canRespond[item._id],
-      })),
-    [items, acceptModeById, canRespond],
-  );
+        canMarkSold,
+      };
+    });
+  }, [items, acceptModeById, canRespond, view]);
   return (
     <>
       <Header />
@@ -160,14 +183,23 @@ const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescriptio
               </div>
 
               <form className="d-flex flex-wrap align-items-center gap-2" onSubmit={handleSearch}>
-                <input type="search" className="form-control" placeholder="Search by jewel or style code" value={search} onChange={(e) => setSearch(e.target.value)} style={{ minWidth: 220 }} aria-label="Search inventory" />
-
-                <button type="submit" className="btn btn-outline-primary" disabled={isLoading}>
-                  {isLoading ? 'Searching...' : 'Search'}
-                </button>
-                <button type="button" className="btn btn-link" onClick={handleReset} disabled={isLoading} aria-label="Reset search">
-                  Reset
-                </button>
+                <div className="pm-input-wrap inventory-search-wrap">
+                  <input
+                    type="search"
+                    className="form-control pm-search-input"
+                    placeholder="Search by jewel or style code"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ minWidth: 260 }}
+                    aria-label="Search inventory"
+                  />
+                  <button type="button" className="pm-input-icon pm-input-action" onClick={runSearch} disabled={isLoading} aria-label="Search">
+                    <i className="fa fa-search" aria-hidden="true" />
+                  </button>
+                  <button type="button" className="pm-input-clear" onClick={handleReset} disabled={isLoading} aria-label="Reset search">
+                    <i className="fa fa-times" aria-hidden="true" />
+                  </button>
+                </div>
               </form>
             </div>
 
@@ -179,6 +211,8 @@ const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescriptio
                       <th scope="col">#</th>
                       <th scope="col">Jewel Code</th>
                       <th scope="col">Style</th>
+                      <th scope="col">Net Wt</th>
+                      <th scope="col">Diamond Ct</th>
                       <th scope="col">MRP</th>
                       <th scope="col">Image</th>
                       <th scope="col">Qty</th>
@@ -191,7 +225,7 @@ const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescriptio
                     {isLoading && <EmptyState message="Loading inventory..." />}
                     {!isLoading && items.length === 0 && <EmptyState message="No inventory items found." />}
                     {!isLoading &&
-                      rowsData.map(({ item, selectedMode, actionable }, idx) => (
+                      rowsData.map(({ item, selectedMode, actionable, canMarkSold }, idx) => (
                         <InventoryRow
                           key={item._id}
                           item={item}
@@ -199,9 +233,11 @@ const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescriptio
                           page={page}
                           limit={limit}
                           actionable={actionable}
+                          canMarkSold={canMarkSold}
                           selectedMode={selectedMode}
                           isAccepting={isAccepting}
                           isRejecting={isRejecting}
+                          isSelling={isSelling}
                           onModeChange={(mode) =>
                             setAcceptModeById((prev) => ({
                               ...prev,
@@ -210,6 +246,7 @@ const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescriptio
                           }
                           onAccept={() => onAccept(item._id, selectedMode)}
                           onReject={() => onReject(item._id)}
+                          onMarkSold={() => onMarkSold(item)}
                         />
                       ))}
                   </tbody>
@@ -226,7 +263,7 @@ const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescriptio
 };
 
 export const InventoryListPage = () => (
-  <InventoryPage view="accepted" pageTitle="My Inventory" description="Showing only products you accepted as outright or rented." heroTitle="My Inventory" heroDescription="Items you already accepted as outright or rented." />
+  <InventoryPage view="accepted" pageTitle="My Inventory" description="Showing only products you accepted as outright or memo." heroTitle="My Inventory" heroDescription="Items you already accepted as outright or memo." />
 );
 
 export const PendingAssignmentsPage = () => (

@@ -11,7 +11,7 @@ import { AssignProductPanel } from '../components/AssignProductPanel';
 import { RequestsTable } from '../components/RequestsTable';
 
 const STATUS_OPTIONS: InventoryRequestStatus[] = ['OPEN', 'IN_PROGRESS', 'FULFILLED', 'CANCELLED'];
-const USAGE_OPTIONS: InventoryUsageChoice[] = ['PURCHASE', 'RENT'];
+const USAGE_OPTIONS: InventoryUsageChoice[] = ['PURCHASE', 'MEMO'];
 
 export const InventoryRequestsPage = () => {
   const { data: user } = useAuthSellerLogin();
@@ -23,6 +23,7 @@ export const InventoryRequestsPage = () => {
   const {
     requests,
     stats,
+    quantityStats,
     total,
     page,
     limit,
@@ -70,22 +71,29 @@ export const InventoryRequestsPage = () => {
   }, [isEditorRole, loadAvailableProducts]);
 
   const selectedRequest = assignControl.requestId ? requests.find((req) => req._id === assignControl.requestId) : undefined;
+  const assignRequestOptions = statusIdOptions.filter((option) => {
+    const request = requests.find((row) => row._id === option.id);
+    const required = Math.max(1, Number(request?.requiredProducts || 1));
+    const assigned = Math.min(required, Math.max(0, Number(request?.assignedCount ?? request?.assignedProductIds?.length ?? 0)));
+    const pending = Math.max(0, required - assigned);
+    return pending > 0 && request?.status !== 'CANCELLED';
+  });
 
   return (
     <>
       <Header />
-      <div className="content-body">
+      <div className="content-body inventory-requests-page">
         <div className="container-fluid">
           <div className="row page-titles mx-0 mb-3">
             <div className="col-sm-12 p-md-0 d-flex justify-content-between align-items-center flex-wrap">
               <div className="welcome-text">
                 <h4 className="mb-1">Inventory Requests</h4>
-                <p className="text-muted mb-0">Jewelers can request products, and admins/distributors can monitor fulfilment or assign inventory.</p>
+                <p className="text-muted mb-0">Use quantity progress to complete each style request accurately. For example, if request qty is 2, assign two separate products to reach fulfilled.</p>
               </div>
             </div>
           </div>
 
-          <RequestSummaryCards stats={stats} />
+          <RequestSummaryCards stats={stats} quantityStats={quantityStats} />
 
           <div className="row">
             {isJeweler && (
@@ -120,7 +128,7 @@ export const InventoryRequestsPage = () => {
                 <AssignProductPanel
                   control={assignControl}
                   usageOptions={USAGE_OPTIONS}
-                  requestOptions={statusIdOptions}
+                  requestOptions={assignRequestOptions}
                   productOptions={availableProducts}
                   selectedRequest={selectedRequest}
                   isAssigning={isAssigningProduct}

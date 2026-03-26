@@ -10,12 +10,12 @@ export const SalePage = () => {
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
-      await sellProduct({
-        productId: form.productId,
-        jewelerId: form.jewelerId,
-        salePrice: Number(form.salePrice),
-        choice: form.choice as 'PURCHASE' | 'RENT',
-      }).unwrap();
+        await sellProduct({
+          productId: form.productId,
+          jewelerId: form.jewelerId,
+          salePrice: Number(form.salePrice),
+          choice: form.choice as 'PURCHASE' | 'MEMO' | 'RENT',
+        }).unwrap();
       toast.success('Sale recorded');
     } catch (error: any) {
       toast.error(error?.data?.message || 'Sale failed');
@@ -59,7 +59,7 @@ export const SalePage = () => {
                 <label>Choice</label>
                 <select className="form-control" value={form.choice} onChange={(e) => onChange('choice', e.target.value)}>
                   <option value="PURCHASE">Purchase</option>
-                  <option value="RENT">Rent</option>
+                  <option value="MEMO">Memo</option>
                 </select>
               </div>
               <button className="btn btn-primary" type="submit" disabled={isLoading}>

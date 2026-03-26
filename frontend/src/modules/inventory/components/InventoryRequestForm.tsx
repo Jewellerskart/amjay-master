@@ -35,13 +35,13 @@ export const InventoryRequestForm = ({ form, usageOptions, isSubmitting, onChang
           </div>
           <div className="form-group col-md-3">
             <label>Usage</label>
-            <select className="form-control" value={form.usageChoice} onChange={(e) => onChange('usageChoice', e.target.value as InventoryUsageChoice)}>
-              {usageOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+              <select className="form-control" value={form.usageChoice} onChange={(e) => onChange('usageChoice', e.target.value as InventoryUsageChoice)}>
+                {usageOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option === 'MEMO' || option === 'RENT' ? 'MEMO' : option}
+                  </option>
+                ))}
+              </select>
           </div>
           <div className="form-group col-md-2">
             <label>Preferred Note</label>

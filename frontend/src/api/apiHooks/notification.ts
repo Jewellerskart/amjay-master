@@ -1,10 +1,9 @@
 import { apiSlice } from '../apiSlice';
-
-type TApiResponse = { status_code?: number; data?: any; message?: string; success?: boolean };
+import type { ApiResponse } from '../types';
 
 export const notificationApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    getAdminNotifications: builder.query<TApiResponse, void>({
+    getAdminNotifications: builder.query<ApiResponse, void>({
       query: () => ({
         url: '/notification/admin',
         method: 'GET',

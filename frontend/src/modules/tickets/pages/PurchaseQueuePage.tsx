@@ -2,6 +2,24 @@ import { useEffect, useState } from 'react';
 import { useListTicketsQuery, useUpdateTicketMutation } from '@api/apiHooks/ticket';
 import { Header } from '@common/header';
 
+const readAmount = (component: any) => {
+  const amount = Number(component?.amount);
+  if (Number.isFinite(amount) && amount > 0) return amount;
+  const costAmt = Number(component?.costAmt);
+  return Number.isFinite(costAmt) && costAmt > 0 ? costAmt : 0;
+};
+
+const formatComponents = (components: any[]) => {
+  const list = Array.isArray(components) ? components : [];
+  if (!list.length) return '-';
+  const previews = list.slice(0, 3).map((component: any) => {
+    const type = `${component?.type || component?.materialType || 'other'}`.toLowerCase();
+    const amount = readAmount(component);
+    return amount > 0 ? `${type}: Rs. ${amount.toLocaleString('en-IN')}` : type;
+  });
+  return `${previews.join(', ')}${list.length > 3 ? ` +${list.length - 3} more` : ''}`;
+};
+
 export const PurchaseQueuePage = () => {
   const [filters, setFilters] = useState({ status: 'OPEN', priority: '' });
   const { data, isLoading, refetch } = useListTicketsQuery({
@@ -57,8 +75,11 @@ export const PurchaseQueuePage = () => {
           <thead className="table-light">
             <tr>
               <th>Ticket</th>
-              <th>Product</th>
+              <th>Design</th>
+              <th>Image</th>
+              <th>Components</th>
               <th>Requested By</th>
+              <th>Uploaded By</th>
               <th>Status</th>
               <th>Priority</th>
               <th>Action</th>
@@ -67,18 +88,35 @@ export const PurchaseQueuePage = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6}>Loading...</td>
+                <td colSpan={9}>Loading...</td>
               </tr>
             ) : tickets.length === 0 ? (
               <tr>
-                <td colSpan={6}>No tickets found</td>
+                <td colSpan={9}>No tickets found</td>
               </tr>
             ) : (
               tickets.map((t: any) => (
                 <tr key={t._id}>
                   <td>{t._id}</td>
-                  <td>{t.productId || '-'}</td>
-                  <td>{t.requestedBy || '-'}</td>
+                  <td>
+                    <div className="font-weight-bold">{t?.product?.design || t?.product?.styleCode || '-'}</div>
+                    <small className="text-muted">{t?.product?.jewelCode || '-'}</small>
+                  </td>
+                  <td>
+                    {t?.product?.image ? (
+                      <img src={t.product.image} alt={t?.product?.design || 'Product'} width={44} height={44} style={{ objectFit: 'cover', borderRadius: 8 }} />
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+                  <td style={{ minWidth: 260 }}>
+                    <small className="text-muted">{formatComponents(t?.product?.components)}</small>
+                  </td>
+                  <td>
+                    <div>{t?.requestedByDetails?.email || '-'}</div>
+                    <small className="text-muted">{t?.requestedByDetails?.businessName || '-'}</small>
+                  </td>
+                  <td>{t?.product?.uploadedByBusinessName || '-'}</td>
                   <td>{t.status}</td>
                   <td>{t.priority}</td>
                   <td className="d-flex gap-1">

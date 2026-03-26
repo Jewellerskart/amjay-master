@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { AuthApi } from '@api/api.index';
-import type { ProfileForm, IKycDocument, KycFormState, UserRole } from '../types/profile.types';
+import { AuthApi } from '@api/index';
+import type { IKycDocument, KycFormState, ProfileForm, UserRole } from '../types';
 
 const initialForm: ProfileForm = {
   _id: '',
@@ -126,3 +126,4 @@ export const useProfile = () => {
     onUploadKycDocument,
   };
 };
+

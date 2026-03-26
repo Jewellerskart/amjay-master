@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react';
-import type { ProfileForm } from '../types/profile.types';
+import type { ProfileForm } from '../types';
 
 type InputEvent = ChangeEvent<HTMLInputElement>;
 

@@ -40,7 +40,7 @@ export const STATUS_OPTIONS: { value: ProductStatus; label: string }[] = [
   { value: 'AVAILABLE', label: 'Available' },
   { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'PURCHASE_PENDING_PAYMENT', label: 'Pending Payment' },
-  { value: 'RENTED', label: 'Rented' },
+  { value: 'RENTED', label: 'Memo' },
   { value: 'ACTIVE', label: 'Active' },
   { value: 'INACTIVE', label: 'Inactive' },
   { value: 'SOLD', label: 'Sold' },
@@ -52,7 +52,8 @@ export const USAGE_TYPE_OPTIONS: { value: UsageType; label: string }[] = [
   { value: 'assigned', label: 'Assigned' },
   { value: 'pending', label: 'Pending' },
   { value: 'outright', label: 'Outright Purchase' },
-  { value: 'rented', label: 'Rental' },
+  { value: 'memo', label: 'Memo' },
+  { value: 'rented', label: 'Memo (Legacy)' },
 ];
 
 export const HOLDER_ROLE_OPTIONS: { value: HolderRole; label: string }[] = [

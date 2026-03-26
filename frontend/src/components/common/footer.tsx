@@ -6,9 +6,7 @@ export const Footer = () => {
       <div className="copyright">
         <p className="mb-2">
           Copyright &copy; {new Date().getFullYear()} Built by
-          <a href="https://www.jewellerskart.com" className="mx-2" target="_blank" rel="noreferrer">
-            Jewellerskart
-          </a>
+          <span className="mx-2">AMJAY</span>
         </p>
         <div className="footer-contact row justify-content-center">
           <a href={whatsappLink} className="mx-2" aria-label="WhatsApp">

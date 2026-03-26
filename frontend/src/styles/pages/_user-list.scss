@@ -56,6 +56,30 @@
 .user-list-page .users-table-wrapper thead th {
   background: #f8f9fa;
   border-bottom: 1px solid var(--border-soft);
+  white-space: nowrap;
+}
+
+.user-list-page .users-table-wrapper tbody td {
+  vertical-align: middle;
+}
+
+.user-list-page .users-table-wrapper tbody tr:hover {
+  background: rgba(0, 123, 255, 0.03);
+}
+
+.user-list-page .stats-card .card-body small {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.user-list-page .stats-card .card-body h3 {
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.user-list-page .badge-pill {
+  min-width: 48px;
+  font-size: 0.75rem;
 }
 
 .user-list-page .user-row {

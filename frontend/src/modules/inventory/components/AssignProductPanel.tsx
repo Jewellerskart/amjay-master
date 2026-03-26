@@ -14,7 +14,7 @@ interface ProductOption {
   status: string;
   holder?: string;
   holderRole?: string;
-  origin?: string;
+  finalPrice?: number;
 }
 
 interface Props {
@@ -30,123 +30,155 @@ interface Props {
   onRefreshProducts: () => void;
 }
 
-export const AssignProductPanel = ({ control, usageOptions, requestOptions, productOptions, selectedRequest, isAssigning, isLoadingProducts, onChange, onAssign, onRefreshProducts }: Props) => (
-  <div className="card mb-3">
-    <div className="card-header d-flex justify-content-between align-items-center">
-      <h5 className="mb-0">Assign Product</h5>
-      <button className="btn btn-sm btn-outline-secondary" disabled={isLoadingProducts} onClick={onRefreshProducts}>
-        {isLoadingProducts ? 'Refreshing...' : 'Refresh Available'}
-      </button>
-    </div>
-    <div className="card-body">
-      {!selectedRequest && <div className="alert alert-info">Select a request to load products for its style code.</div>}
+const getProgress = (request?: InventoryRequestRecord) => {
+  const required = Math.max(1, Number(request?.requiredProducts || 1));
+  const assigned = Math.min(required, Math.max(0, Number(request?.assignedCount ?? request?.assignedProductIds?.length ?? 0)));
+  const remaining = Math.max(0, required - assigned);
+  const percentage = Math.min(100, Math.round((assigned / required) * 100));
+  return { required, assigned, remaining, percentage };
+};
 
-      {selectedRequest && (
-        <div className="alert alert-light border mb-3">
-          <div className="d-flex justify-content-between flex-wrap">
-            <div>
-              <strong>Requested Style:</strong> <span className="text-uppercase">{selectedRequest.styleCode || '-'}</span>
-              <span className="ml-2 text-muted">Qty: {selectedRequest.requiredProducts}</span>
+export const AssignProductPanel = ({ control, usageOptions, requestOptions, productOptions, selectedRequest, isAssigning, isLoadingProducts, onChange, onAssign, onRefreshProducts }: Props) => {
+  const progress = getProgress(selectedRequest);
+  const assignedIdSet = new Set((selectedRequest?.assignedProductIds || []).map((id) => `${id}`.trim()).filter(Boolean));
+  const selectedProductMatchesAssigned = !!control.productId && assignedIdSet.has(control.productId);
+  const disableAssign = isAssigning || !selectedRequest || progress.remaining <= 0 || selectedProductMatchesAssigned;
+
+  const usageLabel = (value?: string) => {
+    const key = `${value || ''}`.toUpperCase();
+    return key === 'MEMO' || key === 'RENT' ? 'MEMO' : key || '-';
+  };
+
+  return (
+    <div className="card mb-3 inventory-assign-panel">
+      <div className="card-header d-flex justify-content-between align-items-center">
+        <h5 className="mb-0">Assign Product</h5>
+        <button className="btn btn-sm btn-outline-secondary" disabled={isLoadingProducts} onClick={onRefreshProducts}>
+          {isLoadingProducts ? 'Refreshing...' : 'Refresh Available'}
+        </button>
+      </div>
+      <div className="card-body">
+        {!selectedRequest && <div className="alert alert-info mb-3">Select a request first, then assign one product per click. Multi-qty requests can be fulfilled in multiple assignments.</div>}
+
+        {selectedRequest && (
+          <div className="inventory-assign-summary mb-3">
+            <div className="d-flex justify-content-between align-items-start flex-wrap">
+              <div>
+                <h6 className="mb-1 text-uppercase">{selectedRequest.styleCode || '-'}</h6>
+                <p className="mb-1 text-muted small">Request ID: {selectedRequest._id?.slice(0, 8)} | {usageLabel(selectedRequest.usageChoice)}</p>
+                <p className="mb-0 text-muted small">Requested by: {selectedRequest.requestedByName || selectedRequest.requestedBy || '-'}</p>
+              </div>
+              <div className="d-flex flex-column align-items-md-end mt-2 mt-md-0">
+                <span className="badge badge-light mb-1">Required: {progress.required}</span>
+                <span className="badge badge-success mb-1">Assigned: {progress.assigned}</span>
+                <span className="badge badge-warning">Remaining: {progress.remaining}</span>
+              </div>
             </div>
-            <div className="text-muted small">Request ID: {selectedRequest._id?.slice(0, 8)}</div>
+            <div className="progress mt-3" style={{ height: 8 }}>
+              <div className="progress-bar bg-success" role="progressbar" style={{ width: `${progress.percentage}%` }} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="form-group">
-        <label>Request</label>
-        <select className="form-control" value={control.requestId} onChange={(e) => onChange('requestId', e.target.value)}>
-          <option value="">Select request</option>
-          {requestOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="form-group">
-        <label>Product ID</label>
-        <input className="form-control" list="available-products" value={control.productId} onChange={(e) => onChange('productId', e.target.value)} placeholder="Select jewel or assignment id" />
-        <datalist id="available-products">
-          {productOptions.map((item) => (
-            <option key={item.id} value={item.id}>
-              {`${item.jewelCode || item.id} (${item.status || 'status'})`}
-            </option>
-          ))}
-        </datalist>
-      </div>
-      <div className="form-row">
-        <div className="form-group col-md-6">
-          <label>Usage</label>
-          <select className="form-control" value={control.usageChoice} onChange={(e) => onChange('usageChoice', e.target.value as InventoryUsageChoice)}>
-            {usageOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
+        <div className="form-group">
+          <label>Request</label>
+          <select className="form-control" value={control.requestId} onChange={(e) => onChange('requestId', e.target.value)}>
+            <option value="">Select request</option>
+            {requestOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
               </option>
             ))}
           </select>
         </div>
-        <div className="form-group col-md-6">
-          <label>Amount</label>
-          <input type="number" min={0} className="form-control" value={control.amount} onChange={(e) => onChange('amount', e.target.value)} />
+        <div className="form-group">
+          <label>Product ID</label>
+          <input className="form-control" list="available-products" value={control.productId} onChange={(e) => onChange('productId', e.target.value)} placeholder="Choose product id from the list below" />
+          <datalist id="available-products">
+            {productOptions.map((item) => (
+              <option key={item.id} value={item.id}>
+                {`${item.jewelCode || item.id} (${item.status || 'status'})`}
+              </option>
+            ))}
+          </datalist>
         </div>
-      </div>
-      <div className="form-group">
-        <label>Remark</label>
-        <input className="form-control" value={control.remark} onChange={(e) => onChange('remark', e.target.value)} />
-      </div>
-      <button className="btn btn-success" disabled={isAssigning} onClick={onAssign}>
-        {isAssigning ? 'Assigning...' : 'Assign Product'}
-      </button>
-
-      {productOptions.length > 0 && (
-        <div className="mt-4 table-responsive">
-          <table className="table table-sm table-striped mb-0">
-            <thead>
-              <tr>
-                <th>Jewel Code</th>
-                <th>Style</th>
-                <th>MRP</th>
-                <th>Status</th>
-                <th>Holder</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {productOptions.map((product) => (
-                <tr key={product.id}>
-                  <td className="text-uppercase">{product.jewelCode || product.id}</td>
-                  <td className="text-uppercase">{product.styleCode || '-'}</td>
-                  <td className="text-capitalize">{product.status?.toLowerCase() || '-'}</td>
-                  <td>{product.holder || product.holderRole ? `${product.holder || ''}${product.holderRole ? ` (${product.holderRole})` : ''}` : 'Unassigned'}</td>
-                  <td>
-                    <div className="d-flex gap-2">
-                      <button className="btn btn-link btn-sm p-0 mr-2" onClick={() => onChange('productId', product.id)}>
-                        Use
-                      </button>
-                      <button className="btn btn-primary btn-sm" disabled={isAssigning} onClick={() => onAssign(product.id)}>
-                        {isAssigning ? 'Assigning...' : 'Assign/Reassign'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+        <div className="form-row">
+          <div className="form-group col-md-6">
+            <label>Usage</label>
+            <select className="form-control" value={control.usageChoice} onChange={(e) => onChange('usageChoice', e.target.value as InventoryUsageChoice)}>
+              {usageOptions.map((option) => (
+                <option key={option} value={option}>
+                  {usageLabel(option)}
+                </option>
               ))}
-            </tbody>
-          </table>
+            </select>
+          </div>
+          <div className="form-group col-md-6 d-flex align-items-end">
+            <small className="text-muted mb-2">Each click assigns 1 piece. Use remaining count to finish multi-qty requests.</small>
+          </div>
+        </div>
+        <div className="form-group">
+          <label>Remark</label>
+          <input className="form-control" value={control.remark} onChange={(e) => onChange('remark', e.target.value)} />
+        </div>
+        {selectedProductMatchesAssigned && <small className="text-danger d-block mb-2">This product is already assigned to the selected request.</small>}
+        <button className="btn btn-success" disabled={disableAssign} onClick={() => onAssign()}>
+          {isAssigning ? 'Assigning...' : selectedRequest ? `Assign 1 Product${progress.remaining > 0 ? ` (Remaining ${progress.remaining})` : ''}` : 'Assign Product'}
+        </button>
+
+        {productOptions.length > 0 && (
+          <div className="mt-4 table-responsive">
+            <table className="table table-sm table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Product ID</th>
+                  <th>Jewel Code</th>
+                  <th>Style</th>
+                  <th>Status</th>
+                  <th>Holder</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productOptions.map((product) => {
+                  const isAlreadyAssigned = assignedIdSet.has(product.id);
+                  return (
+                    <tr key={product.id}>
+                      <td>{product.id.slice(0, 8)}</td>
+                      <td className="text-uppercase">{product.jewelCode || '-'}</td>
+                      <td className="text-uppercase">{product.styleCode || '-'}</td>
+                      <td className="text-capitalize">{product.status?.toLowerCase() || '-'}</td>
+                      <td>{product.holder || product.holderRole ? `${product.holder || ''}${product.holderRole ? ` (${product.holderRole})` : ''}` : 'Unassigned'}</td>
+                      <td>
+                        <div className="d-flex gap-2">
+                          <button className="btn btn-link btn-sm p-0 mr-2" onClick={() => onChange('productId', product.id)}>
+                            Use
+                          </button>
+                          <button className="btn btn-primary btn-sm" disabled={isAssigning || isAlreadyAssigned || progress.remaining <= 0} onClick={() => onAssign(product.id)}>
+                            {isAlreadyAssigned ? 'Assigned' : isAssigning ? 'Assigning...' : 'Assign'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      {assignedIdSet.size > 0 && (
+        <div className="card-footer">
+          <small className="text-muted">Already assigned to this request</small>
+          <div className="mt-2 d-flex flex-wrap">
+            {Array.from(assignedIdSet).map((id) => (
+              <span key={id} className="badge badge-light mr-2 mb-1">
+                {id.slice(0, 8)}
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </div>
-    {productOptions.length > 0 && (
-      <div className="card-footer">
-        <small className="text-muted">Available products</small>
-        <div className="mt-2 d-flex flex-wrap">
-          {productOptions.slice(0, 6).map((product) => (
-            <span key={product.id} className="badge badge-light mr-2 mb-1">
-              {product.id.slice(0, 6)} {product.jewelCode ? `(${product.jewelCode})` : ''}
-            </span>
-          ))}
-        </div>
-      </div>
-    )}
-  </div>
-);
+  );
+};

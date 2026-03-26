@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Header } from '@common/header';
-import { ContactAdminApi, ProductApi } from '@api/api.index';
+import { ContactAdminApi, ProductApi } from '@api/index';
 import { useAuthSellerLogin } from '@hooks/sellerAuth';
 import { isAdminRole } from '@shared/utils/roles';
 
@@ -333,6 +333,26 @@ export const ContactAdminPage = () => {
     setAdminPage(1);
   };
 
+  const runMySearch = () => {
+    setMyPage(1);
+  };
+
+  const runAdminSearch = () => {
+    setAdminPage(1);
+    if (isAdmin) {
+      loadAllQueries();
+    }
+  };
+
+  const runProductBrowseSearch = () => {
+    loadProductsForRequest(productBrowseSearch);
+  };
+
+  const clearProductBrowseSearch = () => {
+    setProductBrowseSearch('');
+    loadProductsForRequest('');
+  };
+
   return (
     <>
       <Header />
@@ -376,13 +396,14 @@ export const ContactAdminPage = () => {
               <div className="row mb-3 align-items-end">
                 <div className="col-md-4 mb-2">
                   <label className="mb-1 small text-muted">Search</label>
-                  <div className="input-group">
-                    <input className="form-control" placeholder="Search subject/message/status" value={mySearch} onChange={(e) => setMySearch(e.target.value)} />
-                    <div className="input-group-append">
-                      <button className="btn btn-outline-secondary" type="button" title="Clear filters" onClick={clearMyFilters}>
-                        <i className="fa fa-filter" />
-                      </button>
-                    </div>
+                  <div className="pm-input-wrap">
+                    <input className="form-control pm-search-input" placeholder="Search subject/message/status" value={mySearch} onChange={(e) => setMySearch(e.target.value)} />
+                    <button type="button" className="pm-input-icon pm-input-action" onClick={runMySearch} aria-label="Search my queries">
+                      <i className="fa fa-search" aria-hidden="true" />
+                    </button>
+                    <button type="button" className="pm-input-clear" onClick={clearMyFilters} aria-label="Reset my query filters">
+                      <i className="fa fa-times" aria-hidden="true" />
+                    </button>
                   </div>
                 </div>
                 <div className="col-md-2 mb-2">
@@ -477,9 +498,9 @@ export const ContactAdminPage = () => {
                   <div className="row mb-3 align-items-end">
                     <div className="col-md-4 mb-2">
                       <label className="mb-1 small text-muted">Search</label>
-                      <div className="input-group">
+                      <div className="pm-input-wrap">
                         <input
-                          className="form-control"
+                          className="form-control pm-search-input"
                           placeholder="Search user/subject/message"
                           value={adminSearch}
                           onChange={(e) => {
@@ -487,11 +508,12 @@ export const ContactAdminPage = () => {
                             setAdminPage(1);
                           }}
                         />
-                        <div className="input-group-append">
-                          <button className="btn btn-outline-secondary" type="button" title="Clear filters" onClick={clearAdminFilters}>
-                            <i className="fa fa-filter" />
-                          </button>
-                        </div>
+                        <button type="button" className="pm-input-icon pm-input-action" onClick={runAdminSearch} disabled={isAllQueriesLoading} aria-label="Search all queries">
+                          <i className="fa fa-search" aria-hidden="true" />
+                        </button>
+                        <button type="button" className="pm-input-clear" onClick={clearAdminFilters} disabled={isAllQueriesLoading} aria-label="Reset admin query filters">
+                          <i className="fa fa-times" aria-hidden="true" />
+                        </button>
                       </div>
                     </div>
                     <div className="col-md-2 mb-2">
@@ -669,10 +691,27 @@ export const ContactAdminPage = () => {
                     <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap">
                       <label className="mb-1">Browse Products</label>
                       <div className="d-flex align-items-center product-browse-actions">
-                        <input className="form-control product-browse-search" value={productBrowseSearch} onChange={(e) => setProductBrowseSearch(e.target.value)} placeholder="Search code/style/client" />
-                        <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => loadProductsForRequest(productBrowseSearch)} disabled={isProductBrowseLoading}>
-                          {isProductBrowseLoading ? 'Loading...' : 'Load'}
-                        </button>
+                        <div className="pm-input-wrap product-browse-search-wrap">
+                          <input
+                            className="form-control product-browse-search pm-search-input"
+                            value={productBrowseSearch}
+                            onChange={(e) => setProductBrowseSearch(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                runProductBrowseSearch();
+                              }
+                            }}
+                            placeholder="Search code/style/client"
+                            aria-label="Search products"
+                          />
+                          <button type="button" className="pm-input-icon pm-input-action" onClick={runProductBrowseSearch} disabled={isProductBrowseLoading} aria-label="Search products">
+                            <i className="fa fa-search" aria-hidden="true" />
+                          </button>
+                          <button type="button" className="pm-input-clear" onClick={clearProductBrowseSearch} disabled={isProductBrowseLoading} aria-label="Reset product browse search">
+                            <i className="fa fa-times" aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                     <div className="form-row">
@@ -931,3 +970,4 @@ export const ContactAdminPage = () => {
     </>
   );
 };
+

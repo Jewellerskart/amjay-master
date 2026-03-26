@@ -19,6 +19,7 @@ export const ProductMarketplacePage: React.FC = () => {
     filters,
     setFilters,
   });
+  const isInitialLoading = isLoading && products.length === 0;
 
   const { qtyByProductId, isAccepting, updateQuantity, handleInquiry } = useProductActions({
     userId: user?._id,
@@ -42,11 +43,17 @@ export const ProductMarketplacePage: React.FC = () => {
       <Header />
 
       <div className="container-fluid py-3">
-        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-          <h4 className="mb-0">Product Marketplace</h4>
-          <div className="d-flex align-items-center gap-2">
-            <label className="small text-muted mb-0">Sort</label>
-            <select className="form-control form-control-sm" value={`${filters.sortBy || 'createdAt'}-${filters.sortDir || 'desc'}`} onChange={(e) => handleSortChange(e.target.value)} style={{ minWidth: 180 }}>
+        <div className="marketplace-topbar mb-3">
+          <div>
+            <h4 className="mb-1">Product Marketplace</h4>
+            <p className="text-muted mb-0">Browse by style, apply filters, and create inquiry requests with quantity.</p>
+          </div>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
+            <span className="badge badge-light">Showing {products.length}</span>
+            <span className="badge badge-info">Total {totalCount}</span>
+            {isInitialLoading ? <span className="badge badge-warning">Loading...</span> : null}
+            <label className="small text-muted mb-0 ml-1">Sort</label>
+            <select className="form-control form-control-sm" value={`${filters.sortBy || 'createdAt'}-${filters.sortDir || 'desc'}`} onChange={(e) => handleSortChange(e.target.value)} style={{ minWidth: 200 }}>
               <option value="createdAt-desc">Newest first</option>
               <option value="livePrice-desc">Price: High to Low</option>
               <option value="livePrice-asc">Price: Low to High</option>

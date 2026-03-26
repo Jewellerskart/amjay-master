@@ -1,6 +1,7 @@
 export type ProductRow = {
   image: string | undefined;
   _id: string;
+  qty?: number;
   orderStatus?: string;
   remarks?: string;
   saleAmount?: number;
@@ -24,7 +25,7 @@ export type ProductRow = {
     costAmount?: number;
   };
   usage?: {
-    type?: 'outright' | 'rented';
+    type?: 'outright' | 'memo' | 'rented';
   };
   uploadedBy?: {
     name?: string;
@@ -53,7 +54,7 @@ export type ProductFormState = {
   itemPieces: string;
   orderStatus: string;
   remarks: string;
-  usageType: 'outright' | 'rented';
+  usageType: 'outright' | 'memo' | 'rented';
   diamondPieces: string;
   diamondWeight: string;
   diamondRatePerCarat: string;

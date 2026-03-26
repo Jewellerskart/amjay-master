@@ -36,6 +36,10 @@ export interface ProfileForm {
   creditLimit: number;
   walletBalance: number;
   commissionRate: number;
+  commissionConfig?: {
+    defaultRate?: number;
+    componentRates?: Record<string, number>;
+  };
   kycVerified: boolean;
   address?: Address;
   createdAt: string;

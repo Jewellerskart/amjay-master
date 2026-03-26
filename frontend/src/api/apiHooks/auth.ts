@@ -1,10 +1,9 @@
 import { apiSlice } from '../apiSlice';
-
-type TApiResponse = { status_code?: number; data?: any; message?: string; success?: boolean };
+import type { ApiResponse } from '../types';
 
 export const authApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    login: builder.mutation<TApiResponse, { email: string; password: string }>({
+    login: builder.mutation<ApiResponse, { email: string; password: string }>({
       query: (body) => ({
         url: '/login',
         method: 'POST',
@@ -12,14 +11,14 @@ export const authApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Auth'],
     }),
-    forgotPassword: builder.mutation<TApiResponse, { email: string }>({
+    forgotPassword: builder.mutation<ApiResponse, { email: string }>({
       query: (body) => ({
         url: '/forgot-password',
         method: 'POST',
         body,
       }),
     }),
-    verifyForgotPasswordOtp: builder.mutation<TApiResponse, { email: string; otp: string; otpTaskId: string }>({
+    verifyForgotPasswordOtp: builder.mutation<ApiResponse, { email: string; otp: string; otpTaskId: string }>({
       query: (body) => ({
         url: '/verify-forgot-password-otp',
         method: 'POST',
@@ -27,7 +26,7 @@ export const authApi = apiSlice.injectEndpoints({
       }),
     }),
     resetPassword: builder.mutation<
-      TApiResponse,
+      ApiResponse,
       { email: string; otp: string; otpTaskId: string; newPassword: string; confirmPassword: string }
     >({
       query: (body) => ({
@@ -36,27 +35,27 @@ export const authApi = apiSlice.injectEndpoints({
         body,
       }),
     }),
-    registerUser: builder.mutation<TApiResponse, Record<string, unknown>>({
+    registerUser: builder.mutation<ApiResponse, Record<string, unknown>>({
       query: (body) => ({
         url: '/register-user',
         method: 'PUT',
         body,
       }),
     }),
-    checkBusinessName: builder.mutation<TApiResponse, { businessName: string }>({
+    checkBusinessName: builder.mutation<ApiResponse, { businessName: string }>({
       query: (body) => ({
         url: '/check-business-name',
         method: 'POST',
         body,
       }),
     }),
-    refreshToken: builder.mutation<TApiResponse, void>({
+    refreshToken: builder.mutation<ApiResponse, void>({
       query: () => ({
         url: '/refresh-token',
         method: 'POST',
       }),
     }),
-    getLoggedInUser: builder.query<TApiResponse, void>({
+    getLoggedInUser: builder.query<ApiResponse, void>({
       query: () => ({
         url: '/login-user',
         method: 'GET',
@@ -64,7 +63,7 @@ export const authApi = apiSlice.injectEndpoints({
       providesTags: ['Auth'],
       keepUnusedDataFor: 60,
     }),
-    getUsers: builder.mutation<TApiResponse, Record<string, unknown>>({
+    getUsers: builder.mutation<ApiResponse, Record<string, unknown>>({
       query: (body) => ({
         url: '/get-users',
         method: 'POST',
@@ -72,27 +71,27 @@ export const authApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
-    getUsersNames: builder.mutation<TApiResponse, void>({
+    getUsersNames: builder.mutation<ApiResponse, void>({
       query: () => ({
         url: '/get-users-name',
         method: 'GET',
       }),
     }),
-    logout: builder.mutation<TApiResponse, void>({
+    logout: builder.mutation<ApiResponse, void>({
       query: () => ({
         url: '/logout',
         method: 'POST',
       }),
       invalidatesTags: ['Auth'],
     }),
-    getProfile: builder.query<TApiResponse, void>({
+    getProfile: builder.query<ApiResponse, void>({
       query: () => ({
         url: '/profile',
         method: 'GET',
       }),
       providesTags: ['Auth'],
     }),
-    updateProfile: builder.mutation<TApiResponse, Record<string, unknown>>({
+    updateProfile: builder.mutation<ApiResponse, Record<string, unknown>>({
       query: (body) => ({
         url: '/profile',
         method: 'PUT',
@@ -101,7 +100,7 @@ export const authApi = apiSlice.injectEndpoints({
       invalidatesTags: ['Auth'],
     }),
     uploadKycDocument: builder.mutation<
-      TApiResponse,
+      ApiResponse,
       {
         userId: string
         documentType: string
@@ -125,7 +124,7 @@ export const authApi = apiSlice.injectEndpoints({
       },
       invalidatesTags: ['Auth'],
     }),
-    getUserByEmail: builder.query<TApiResponse, string>({
+    getUserByEmail: builder.query<ApiResponse, string>({
       query: (email) => ({
         url: `/admin-user/${encodeURIComponent(email)}`,
         method: 'GET',
@@ -133,7 +132,7 @@ export const authApi = apiSlice.injectEndpoints({
       providesTags: ['User'],
     }),
     updateUserByEmail: builder.mutation<
-      TApiResponse,
+      ApiResponse,
       { email: string; payload: Record<string, unknown> }
     >({
       query: ({ email, payload }) => ({
@@ -143,7 +142,7 @@ export const authApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
-    deleteUserByEmail: builder.mutation<TApiResponse, { email: string }>({
+    deleteUserByEmail: builder.mutation<ApiResponse, { email: string }>({
       query: ({ email }) => ({
         url: `/admin-user/${encodeURIComponent(email)}`,
         method: 'DELETE',

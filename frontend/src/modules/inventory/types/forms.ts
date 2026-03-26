@@ -19,6 +19,5 @@ export interface InventoryAssignControlState {
   productId: string;
   styleCode?: string;
   usageChoice: InventoryUsageChoice;
-  amount: string;
   remark: string;
 }

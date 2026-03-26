@@ -1,5 +1,5 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react';
-import type { IKycDocument, KycFormState } from '../types/profile.types';
+import type { IKycDocument, KycFormState } from '../types';
 
 type ProfileKycCardProps = {
   canManageKyc: boolean;

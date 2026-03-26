@@ -1,17 +1,37 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { inventoryApi, ProductApi } from '@api/api.index';
+import { inventoryApi, PosApi, ProductApi } from '@api/index';
+import { resolveProductPricing } from '../../products/utils/pricing';
 
 type InventoryRow = {
-  image: any;
+  image?: string;
   _id: string;
-  jewelCode: string;
-  styleCode: string;
-  qty: number;
+  qty?: number;
+  product?: {
+    jewelCode?: string;
+    styleCode?: string;
+    qty?: number;
+  };
+  weight?: {
+    netWeight?: number;
+    pureWeight?: number;
+  };
+  diamond?: {
+    weight?: number;
+    pieces?: number;
+  };
+  currentHolder?: {
+    userId?: string;
+    role?: string;
+    name?: string;
+  };
+  usage?: {
+    type?: string;
+  };
   holderName?: string;
   status?: string;
   usageType?: string;
-  origin?: string;
+  finalPrice?: number;
   createdAt?: string;
 };
 
@@ -34,6 +54,7 @@ export const useMyInventory = (user?: UserShape, view: 'accepted' | 'pending' = 
   const [listProducts, { isLoading: isLoadingList }] = inventoryApi.useListInventoryMutation();
   const [acceptProduct, { isLoading: isAccepting }] = ProductApi.useAcceptAssignedProductMutation();
   const [rejectProduct, { isLoading: isRejecting }] = ProductApi.useRejectAssignedProductMutation();
+  const [sellProduct, { isLoading: isSelling }] = PosApi.useSellProductMutation();
 
   const userId = `${user?._id || ''}`;
   const holderRole = `${user?.role || ''}`.toLowerCase();
@@ -46,7 +67,7 @@ export const useMyInventory = (user?: UserShape, view: 'accepted' | 'pending' = 
   const setPage = paging ? paging.onPageChange : setPageState;
   const setLimit = paging ? paging.onLimitChange : setLimitState;
   const [search, setSearch] = useState('');
-  const [acceptModeById, setAcceptModeById] = useState<Record<string, 'rent' | 'outright'>>({});
+  const [acceptModeById, setAcceptModeById] = useState<Record<string, 'memo' | 'outright'>>({});
 
   const loadInventory = useCallback(
     async (params: LoadParams = {}) => {
@@ -91,7 +112,7 @@ export const useMyInventory = (user?: UserShape, view: 'accepted' | 'pending' = 
   }, [page, limit, loadInventory]);
 
   const onAccept = useCallback(
-    async (id: string, mode: 'rent' | 'outright') => {
+    async (id: string, mode: 'memo' | 'outright') => {
       if (!id) return;
       try {
         await acceptProduct({ id, mode }).unwrap();
@@ -118,11 +139,42 @@ export const useMyInventory = (user?: UserShape, view: 'accepted' | 'pending' = 
     [rejectProduct, loadInventory],
   );
 
+  const onMarkSold = useCallback(
+    async (row: InventoryRow) => {
+      const productId = `${row?._id || ''}`.trim();
+      if (!productId) return;
+
+      const jewelerId = `${row?.currentHolder?.userId || ''}`.trim();
+      const pricing = resolveProductPricing(row);
+      const finalPrice = Number(pricing.finalPrice);
+      const usageKey = `${row?.usage?.type || row?.usageType || ''}`.trim().toLowerCase();
+      const choice = usageKey === 'memo' || usageKey === 'rented' || usageKey === 'rent' ? 'MEMO' : 'PURCHASE';
+
+      if (!jewelerId) {
+        toast.error('Unable to resolve holder for this product');
+        return;
+      }
+      if (!Number.isFinite(finalPrice) || finalPrice <= 0) {
+        toast.error('Final price is missing; cannot mark sold');
+        return;
+      }
+
+      try {
+        await sellProduct({ productId, jewelerId, salePrice: finalPrice, choice }).unwrap();
+        toast.success('Product marked as sold');
+        await loadInventory();
+      } catch (error: any) {
+        toast.error(error?.data?.message || 'Failed to mark product as sold');
+      }
+    },
+    [loadInventory, sellProduct],
+  );
+
   const canRespond = useMemo(() => {
     const map: Record<string, boolean> = {};
     items.forEach((row) => {
       const status = `${row.status || ''}`.toLowerCase();
-      const pending = view === 'pending' || row.origin === 'assigned' || status === 'assigned' || status === 'pending' || status === '';
+      const pending = view === 'pending' || status === 'assigned' || status === 'pending' || status === '';
       map[row._id] = pending && view === 'pending';
     });
     return map;
@@ -134,7 +186,8 @@ export const useMyInventory = (user?: UserShape, view: 'accepted' | 'pending' = 
     list: { items, total, isLoading: isLoadingList },
     pagination: { page, limit, setPage, setLimit, totalPages },
     searchState: { search, setSearch, loadInventory },
-    responses: { acceptModeById, setAcceptModeById, onAccept, onReject, isAccepting, isRejecting, canRespond },
+    responses: { acceptModeById, setAcceptModeById, onAccept, onReject, onMarkSold, isAccepting, isRejecting, isSelling, canRespond },
     reload: loadInventory,
   };
 };
+

@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { dashboardPageUrl, signInPageUrl } from '@variable';
-import { AuthApi } from '@api/api.index';
+import { AuthApi } from '@api/index';
 import { isAdminRole } from '@shared/utils/roles';
 import type { TSellerLoginAndSignUpData } from '../../@types/api/seller';
 
@@ -56,3 +56,4 @@ export const useAuthAdminLogin = (): UseAuthSellerLoginResult => {
 
   return auth;
 };
+

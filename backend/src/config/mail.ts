@@ -24,7 +24,7 @@ export async function sendDynamicEmail(
 
     if (!attachments.length) {
       const MailConfig = {
-        Source: 'MANI CMS <development@jewellerskart.com>',
+        Source: 'AMJAY CMS <development@jewellerskart.com>',
         Destination: { ToAddresses: [recipient] },
         Message: { Subject: { Data: subject }, Body: { Html: { Data: htmlBody } } },
       }
@@ -33,7 +33,7 @@ export async function sendDynamicEmail(
     }
     const boundary = `----=_Part_${Date.now()}`
     let mime = [
-      `From: MANI CMS <development@jewellerskart.com>`,
+      `From: AMJAY CMS <development@jewellerskart.com>`,
       `To: ${recipient}`,
       `Subject: ${subject}`,
       `MIME-Version: 1.0`,
@@ -64,7 +64,7 @@ export async function sendDynamicEmail(
       new SendRawEmailCommand({
         RawMessage: { Data: Buffer.from(mime) },
         Destinations: [recipient],
-        Source: 'MANI CMS <development@jewellerskart.com>',
+        Source: 'AMJAY CMS <development@jewellerskart.com>',
       })
     )
 

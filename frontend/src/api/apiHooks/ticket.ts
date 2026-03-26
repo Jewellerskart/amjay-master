@@ -1,26 +1,31 @@
 import { apiSlice } from '../apiSlice'
+import type { ApiResponse } from '../types'
 
-type ITicketResponse = {
-  status_code?: number
-  data?: {
-    ticket?: any
-    data?: any[]
-    count?: number
-  }
-  message?: string
+type TicketRecord = {
+  _id: string
+  status: string
+  priority: string
+  createdAt: string
+  [key: string]: any
+}
+
+type TicketPayload = {
+  ticket?: TicketRecord
+  data?: TicketRecord[]
+  count?: number
 }
 
 export const ticketApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    createTicket: builder.mutation<ITicketResponse, any>({
+    createTicket: builder.mutation<ApiResponse<TicketPayload>, Record<string, unknown>>({
       query: (body) => ({ url: '/ticket/purchase', method: 'POST', body }),
       invalidatesTags: ['Ticket'],
     }),
-    listTickets: builder.query<ITicketResponse, any>({
+    listTickets: builder.query<ApiResponse<TicketPayload>, Record<string, unknown>>({
       query: (body) => ({ url: '/ticket/list', method: 'POST', body }),
       providesTags: ['Ticket'],
     }),
-    updateTicket: builder.mutation<ITicketResponse, { ticketId: string; status: string }>({
+    updateTicket: builder.mutation<ApiResponse<TicketPayload>, { ticketId: string; status: string }>({
       query: ({ ticketId, status }) => ({
         url: `/ticket/${ticketId}`,
         method: 'PATCH',

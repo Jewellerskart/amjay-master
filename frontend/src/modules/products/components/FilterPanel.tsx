@@ -88,16 +88,26 @@ export const FilterPanel = ({
         </div>
 
         {/* SEARCH */}
-        <div className="filter-search-group mb-3">
-          <span className="filter-search-icon">
-            <i className="fa fa-search" />
-          </span>
-
-          <input className="form-control" placeholder="Search by name/style/jewel code" value={filters.search} onChange={(e) => onFilterChange('search', e.target.value)} />
+        <div className="filter-search-group pm-input-wrap mb-3">
+          <input
+            className="form-control pm-search-input"
+            placeholder="Search by name/style/jewel code"
+            value={filters.search}
+            onChange={(e) => onFilterChange('search', e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onApplyFilters();
+              }
+            }}
+          />
+          <button type="button" className="pm-input-icon pm-input-action" onClick={onApplyFilters} aria-label="Search products">
+            <i className="fa fa-search" aria-hidden="true" />
+          </button>
 
           {filters.search && (
-            <button className="btn btn-sm btn-light filter-search-clear" onClick={() => onFilterChange('search', '')}>
-              <i className="fa fa-times" />
+            <button type="button" className="pm-input-clear" onClick={() => onFilterChange('search', '')} aria-label="Reset product search">
+              <i className="fa fa-times" aria-hidden="true" />
             </button>
           )}
         </div>

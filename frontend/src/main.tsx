@@ -11,8 +11,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <meta charSet="utf-8" />
       <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
       <meta name="viewport" content="width=device-width,initial-scale=1" />
-      <title>Jewel Days - Admin Dashboard </title>
-      <link rel="icon" type="image/png" sizes="16x16" href={`${FRONTEND_URL}/images/favicon.png`} />
+      <title>AMJAY - Admin Dashboard </title>
+      <link rel="icon" type="image/png" sizes="16x16" href={`${FRONTEND_URL}/logo/amjay-favicon.png`} />
       <link rel="stylesheet" href={`${FRONTEND_URL}/vendor/owl-carousel/css/owl.carousel.min.css`} />
       <link rel="stylesheet" href={`${FRONTEND_URL}/vendor/owl-carousel/css/owl.theme.default.min.css`} />
       <link rel="stylesheet" href={`${FRONTEND_URL}/vendor/jqvmap/css/jqvmap.min.css`} />

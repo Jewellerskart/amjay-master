@@ -40,7 +40,6 @@ const ContactAdminPage = lazyNamed(() => import('@modules/tickets/pages/ContactA
 const CommissionControlPage = lazyNamed(() => import('@modules/reports/pages/CommissionControlPage'), 'CommissionControlPage');
 const ProductCatalogPage = lazyNamed(() => import('@modules/products/pages/ProductListPage'), 'ProductCatalogPage');
 const ProductMarketplacePage = lazyNamed(() => import('@modules/products/pages/ProductMarketplacePage'), 'ProductMarketplacePage');
-const ProductBulkUploadPage = lazyNamed(() => import('@modules/products/pages/ProductBulkUploadPage'), 'ProductBulkUploadPage');
 const ProductDetailPage = lazyNamed(() => import('@modules/products/pages/ProductDetailPage'), 'ProductDetailPage');
 const WalletPage = lazyNamed(() => import('@modules/wallet/pages/WalletPage'), 'WalletPage');
 const InvoicePage = lazyNamed(() => import('@modules/invoices/pages/InvoicePage'), 'InvoicePage');
@@ -75,7 +74,6 @@ export const privateRoutes = [
   { path: ProductListUrl, element: suspense(<ProductCatalogPage />) },
   { path: ProductDetailUrl, element: suspense(<ProductDetailPage />) },
   { path: '/products/marketplace', element: suspense(<ProductMarketplacePage />) },
-  { path: '/products/bulk-upload', element: suspense(<ProductBulkUploadPage />) },
   { path: commissionControlUrl, element: suspense(<CommissionControlPage />) },
   { path: inventoryRequestsUrl, element: suspense(<InventoryRequestsPage />) },
   { path: inventoryListUrl, element: suspense(<InventoryListPage />) },

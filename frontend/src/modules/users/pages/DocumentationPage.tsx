@@ -1,5 +1,5 @@
 import { Header } from '@common/header';
-import { FrontendDocs } from '../components/admin/user/FrontendDocs';
+import { FrontendDocs } from '../components';
 
 export const DocumentationPage = () => (
   <>

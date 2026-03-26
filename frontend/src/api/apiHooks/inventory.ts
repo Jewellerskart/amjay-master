@@ -1,8 +1,8 @@
-import { TApiResponse } from '@types';
 import { apiSlice } from '../apiSlice';
 import { TListProduct } from './product';
+import type { ApiResponse } from '../types';
 
-export type InventoryUsageChoice = 'PURCHASE' | 'RENT';
+export type InventoryUsageChoice = 'PURCHASE' | 'MEMO' | 'RENT';
 export type InventoryRequestStatus = 'OPEN' | 'IN_PROGRESS' | 'FULFILLED' | 'CANCELLED';
 
 export interface InventoryRequestPayload {
@@ -17,7 +17,6 @@ export interface InventoryAssignPayload {
   productId: string;
   jewelerId: string;
   usageChoice: InventoryUsageChoice;
-  amount?: number;
   remark?: string;
 }
 
@@ -36,7 +35,7 @@ export interface InventoryListPayload {
 type InventoryListResponse = {
   status_code?: number;
   data?: {
-    data?: any[];
+    data?: Record<string, unknown>[];
     count?: number;
     page?: number;
     limit?: number;
@@ -46,13 +45,13 @@ type InventoryListResponse = {
 
 type InventoryResponse = {
   status_code?: number;
-  data?: any;
+  data?: Record<string, unknown>;
   message?: string;
 };
 
 export const inventoryApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    listInventory: builder.mutation<TApiResponse, TListProduct>({
+    listInventory: builder.mutation<ApiResponse, TListProduct>({
       query: (body) => ({
         url: '/inventory/list',
         method: 'POST',

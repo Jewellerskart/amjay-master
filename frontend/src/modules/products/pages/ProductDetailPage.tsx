@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Header } from '@common/header';
 import { useGetProductByIdQuery } from '@api/apiHooks/product';
 import { ProductListUrl } from '@variable';
+import { resolveProductPricing } from '../utils/pricing';
 
 const InfoRow = ({ label, value }: { label: string; value?: string | number | null }) => (
   <div className="d-flex justify-content-between py-1 product-detail__row">
@@ -28,7 +29,8 @@ export const ProductDetailPage = () => {
   const { data, isLoading, isError, refetch } = useGetProductByIdQuery(identifier, { skip: !identifier });
   const product = data?.data?.product;
 
-  const [coverImage, displayName, liveMetalRate, finalPrice] = [product?.image, product?.product?.jewelCode, product?.liveMetal, product?.finalPrice];
+  const [coverImage, displayName] = [product?.image, product?.product?.jewelCode];
+  const pricing = resolveProductPricing(product);
 
   return (
     <div className="content-body product-detail-page">
@@ -102,12 +104,12 @@ export const ProductDetailPage = () => {
                       </div>
                       <div className="pd-metric">
                         <p className="label">Live Metal Rate</p>
-                        <h5 className="value">{formatMoney(liveMetalRate)}</h5>
+                        <h5 className="value">{formatMoney(pricing.liveMetal)}</h5>
                         <small className="text-muted">Real-time rate for this SKU</small>
                       </div>
                       <div className="pd-metric">
                         <p className="label">Total Price </p>
-                        <h5 className="value text-success">{formatMoney(finalPrice) || 'N/A'}</h5>
+                        <h5 className="value text-success">{formatMoney(pricing.finalPrice) || 'N/A'}</h5>
                         <small className="text-muted">Usage: {product?.usage?.type || 'N/A'}</small>
                       </div>
                     </div>
@@ -174,7 +176,7 @@ export const ProductDetailPage = () => {
                     <InfoRow label="Pure Weight" value={product?.weight?.pureWeight ?? '-'} />
                     <InfoRow label="Piece Value" value={formatMoney(product?.cost?.pieceValue)} />
                     <InfoRow label="Metal Value" value={formatMoney(product?.cost?.metalValue)} />
-                    <InfoRow label="Live Metal Rate" value={formatMoney(liveMetalRate)} />
+                    <InfoRow label="Live Metal Rate" value={formatMoney(pricing.liveMetal)} />
                     <InfoRow label="Diamond Value" value={formatMoney(product?.cost?.diamondValue)} />
                     <InfoRow label="Color Stone Value" value={formatMoney(product?.cost?.colorStoneValue)} />
                     <InfoRow label="Other Metal Value" value={formatMoney(product?.cost?.otherMetalValue)} />

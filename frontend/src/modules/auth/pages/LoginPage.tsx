@@ -4,7 +4,7 @@ import { ISeller, TApiResponse } from '@types';
 import { ScriptSrc } from '@common/Scripts';
 import toast from 'react-hot-toast';
 import { dashboardPageUrl } from '@variable';
-import { AuthApi } from '@api/api.index';
+import { AuthApi } from '@api/index';
 
 export const LoginPage = () => {
   const [loginData, setLoginData] = useState<ISeller.TSellerLoginAndSignUpData>({
@@ -118,7 +118,7 @@ export const LoginPage = () => {
                     <div className="auth-form">
                       <div className="text-center mb-3">
                         <a href="/">
-                          <img src={`/logo/logo.png`} width={'100%'}></img>
+                          <img src={`/logo/amjay-logo-1.png`} width={'100%'}></img>
                         </a>
                       </div>
                       <h4 className="text-center mb-4">Sign in your account</h4>
@@ -224,3 +224,4 @@ export const LoginPage = () => {
     </>
   );
 };
+

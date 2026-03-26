@@ -1,4 +1,16 @@
 .product-marketplace-page {
+  .marketplace-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    h4 {
+      letter-spacing: 0.2px;
+    }
+  }
+
   .filters-sticky {
     position: sticky;
     top: 84px;
@@ -147,46 +159,17 @@
   .filter-search-group {
     position: relative;
 
-    .filter-search-icon {
-      position: absolute;
-      left: 10px;
-      top: 50%;
-      transform: translateY(-50%);
+    .pm-input-icon {
       color: #6a7bff;
-      opacity: 0.85;
-      font-size: 13px;
-      pointer-events: none;
     }
 
-    .filter-search-clear {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      padding: 4px 6px;
-      border: 1px solid #dfe4ff;
-      border-radius: 50%;
+    .pm-input-clear {
       color: #5a6bd6;
-      box-shadow: 0 4px 10px -6px rgba(53, 76, 206, 0.4);
-      width: 28px;
-      height: 28px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      transition:
-        background-color 140ms ease,
-        transform 140ms ease;
-
-      &:hover {
-        background: rgba(90, 107, 214, 0.12);
-        transform: translateY(-1px);
-      }
     }
 
-    input {
-      padding-right: 38px;
-      padding-left: 36px;
+    .pm-search-input {
+      padding-left: 12px;
+      padding-right: 68px;
       font-size: 12px;
     }
   }
@@ -194,6 +177,97 @@
   .product-grid-loading {
     backdrop-filter: blur(2px);
     background: rgba(255, 255, 255, 0.65);
+  }
+
+  .product-grid-loading-ribbon {
+    position: absolute;
+    top: -4px;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: rgba(111, 126, 255, 0.2);
+    overflow: hidden;
+    border-radius: 999px;
+  }
+
+  .product-grid-loading-ribbon__bar {
+    width: 34%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(79, 99, 245, 0.3) 0%, rgba(79, 99, 245, 1) 50%, rgba(79, 99, 245, 0.3) 100%);
+    animation: grid-load-slide 1s ease-in-out infinite;
+  }
+
+  .product-card-skeleton {
+    border-radius: 8px;
+    border: 1px solid #e5e9f8;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 10px 20px -18px rgba(32, 44, 98, 0.5);
+  }
+
+  .product-card-skeleton__image {
+    height: 300px;
+    background: #eef2ff;
+  }
+
+  .product-card-skeleton__body {
+    padding: 14px;
+  }
+
+  .product-card-skeleton__line {
+    height: 14px;
+    border-radius: 8px;
+    background: #edf1fd;
+    margin-bottom: 8px;
+  }
+
+  .product-card-skeleton__line--short {
+    width: 72%;
+  }
+
+  .product-card-skeleton__chip-row {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .product-card-skeleton__chip {
+    width: 80px;
+    height: 24px;
+    border-radius: 999px;
+    background: #edf1fd;
+  }
+
+  .product-card-skeleton__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+  }
+
+  .product-card-skeleton__button {
+    flex: 1;
+    height: 32px;
+    border-radius: 8px;
+    background: #dce3ff;
+  }
+
+  .product-card-skeleton__button--light {
+    flex: 0.45;
+    background: #edf1fd;
+  }
+
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(100deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.55) 45%, rgba(255, 255, 255, 0) 100%);
+    animation: shimmer-slide 1.2s ease-in-out infinite;
   }
 
   .product-card {
@@ -348,6 +422,24 @@
     align-items: center;
   }
 
+  .product-card__jewel-list {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    white-space: nowrap;
+
+    .product-chip {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: calc((100% - 18px) / 4);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
   .product-card__qty {
     label {
       min-width: 28px;
@@ -379,6 +471,21 @@
     }
     100% {
       box-shadow: 0 0 0 0 rgba(255, 93, 93, 0);
+    }
+  }
+
+  @keyframes shimmer-slide {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes grid-load-slide {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(300%);
     }
   }
 

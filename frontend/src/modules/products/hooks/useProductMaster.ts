@@ -1,18 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { AuthApi, ProductApi } from '@api/api.index';
+import { AuthApi, ProductApi } from '@api/index';
 import { ProductRow, JewelerOption } from '../../inventory/types/types';
 
-const parseNumber = (value: string, fallback = 0) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-};
+type HolderRoleFilter = '' | 'super-admin' | 'admin' | 'distributor' | 'jeweler';
 
 type ExternalPaging = {
   page: number;
   limit: number;
   onPageChange: (page: number) => void;
   onLimitChange: (limit: number) => void;
+};
+
+type PriceTotals = {
+  inventoryQty: number;
+  inventoryPrice: number;
+  memoQty: number;
+  memoPrice: number;
+  purchasedQty: number;
+  purchasedPrice: number;
+};
+
+type AssignProductOptions = {
+  toUserId?: string;
+  quantity?: number;
+  silent?: boolean;
+  skipReload?: boolean;
 };
 
 export const useProductMaster = (user: any, paging?: ExternalPaging) => {
@@ -22,41 +35,81 @@ export const useProductMaster = (user: any, paging?: ExternalPaging) => {
   const canAssign = isAdmin || isDistributor;
 
   const [listProducts, { isLoading: isLoadingProducts }] = ProductApi.useListProductsMutation();
-  const [updateProduct, { isLoading: isUpdatingProduct }] = ProductApi.useUpdateProductMutation();
   const [assignProduct, { isLoading: isAssigningProduct }] = ProductApi.useAssignProductToJewelerMutation();
   const [getUsersNames] = AuthApi.useGetUsersNamesMutation();
 
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalQtyFromApi, setTotalQtyFromApi] = useState(0);
+  const [priceTotals, setPriceTotals] = useState<PriceTotals>({
+    inventoryQty: 0,
+    inventoryPrice: 0,
+    memoQty: 0,
+    memoPrice: 0,
+    purchasedQty: 0,
+    purchasedPrice: 0,
+  });
   const [search, setSearch] = useState('');
-  const [holderRole, setHolderRole] = useState<'' | 'super-admin' | 'admin' | 'distributor' | 'jeweler'>('');
+  const [holderRole, setHolderRole] = useState<HolderRoleFilter>('');
   const [pageState, setPageState] = useState(1);
   const [limitState, setLimitState] = useState(10);
   const page = paging ? paging.page : pageState;
   const limit = paging ? paging.limit : limitState;
   const setPage = paging ? paging.onPageChange : setPageState;
   const setLimit = paging ? paging.onLimitChange : setLimitState;
-  const [sortBy, setSortBy] = useState<'createdAt' | 'jewelCode' | 'qty' | 'weight' | 'price' | 'livePrice'>('createdAt');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'jewelCode' | 'styleCode' | 'qty' | 'weight' | 'price' | 'livePrice'>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const [jewelers, setJewelers] = useState<JewelerOption[]>([]);
   const [assignByProductId, setAssignByProductId] = useState<Record<string, string>>({});
-  const [assignQtyByProductId, setAssignQtyByProductId] = useState<Record<string, string>>({});
-  const [qtyByProductId, setQtyByProductId] = useState<Record<string, string>>({});
 
-  const loadProducts = async () => {
+  const loadProducts = async (
+    overrides: Partial<{
+      page: number;
+      limit: number;
+      search: string;
+      holderRole: HolderRoleFilter;
+      sortBy: 'createdAt' | 'jewelCode' | 'styleCode' | 'qty' | 'weight' | 'price' | 'livePrice';
+      sortDir: 'asc' | 'desc';
+    }> = {},
+  ) => {
+    const payload = {
+      page: overrides.page ?? page,
+      limit: overrides.limit ?? limit,
+      search: overrides.search ?? search,
+      holderRole: overrides.holderRole ?? holderRole,
+      sortBy: overrides.sortBy ?? sortBy,
+      sortDir: overrides.sortDir ?? sortDir,
+    };
+
     try {
-      const res: any = await listProducts({ page, limit, search, holderRole, sortBy, sortDir }).unwrap();
+      const res: any = await listProducts(payload).unwrap();
       const rows = Array.isArray(res?.data?.data) ? res.data.data : [];
+      const totals = res?.data?.totals || {};
       setProducts(rows);
       setTotalProducts(Number(res?.data?.count || 0));
       setTotalQtyFromApi(Number(res?.data?.totalQty || 0));
+      setPriceTotals({
+        inventoryQty: Number(totals?.inventoryQty || res?.data?.totalQty || 0),
+        inventoryPrice: Number(totals?.inventoryPrice || 0),
+        memoQty: Number(totals?.memoQty || 0),
+        memoPrice: Number(totals?.memoPrice || 0),
+        purchasedQty: Number(totals?.purchasedQty || 0),
+        purchasedPrice: Number(totals?.purchasedPrice || 0),
+      });
     } catch (error: any) {
       toast.error(error?.data?.message || 'Failed to load products');
       setProducts([]);
       setTotalProducts(0);
       setTotalQtyFromApi(0);
+      setPriceTotals({
+        inventoryQty: 0,
+        inventoryPrice: 0,
+        memoQty: 0,
+        memoPrice: 0,
+        purchasedQty: 0,
+        purchasedPrice: 0,
+      });
     }
   };
 
@@ -90,61 +143,46 @@ export const useProductMaster = (user: any, paging?: ExternalPaging) => {
 
   const onSearch = async () => {
     setPage(1);
-    await loadProducts();
+    await loadProducts({ page: 1 });
   };
 
-  const onUpdateQty = async (product: ProductRow) => {
+  const onAssignProduct = async (product: ProductRow, opts: AssignProductOptions = {}) => {
     const id = product?._id;
-    if (!id) return;
-
-    const nextQty = parseNumber(qtyByProductId[id] ?? `${product?.product?.qty || 0}`, 0);
-    if (nextQty < 0) {
-      toast.error('Qty cannot be negative');
-      return;
-    }
-
-    try {
-      await updateProduct({ id, payload: { product: { ...(product.product || {}), qty: nextQty } } }).unwrap();
-
-      toast.success('Quantity updated');
-      loadProducts();
-    } catch (error: any) {
-      toast.error(error?.data?.message || 'Failed to update quantity');
-    }
-  };
-
-  const onAssignProduct = async (product: ProductRow, opts: { toUserId?: string; quantity?: number } = {}) => {
-    const id = product?._id;
-    if (!id) return;
+    if (!id) return false;
     const toUserId = `${opts.toUserId || assignByProductId[id] || ''}`;
-    const quantity = Number(opts.quantity ?? assignQtyByProductId[id] ?? 1);
+    const quantity = Number(opts.quantity ?? 1);
+    const silent = opts.silent === true;
+    const skipReload = opts.skipReload === true;
     const fromRole = `${user?.role || ''}` || 'admin';
 
     if (!toUserId) {
       toast.error('Select jeweler first');
-      return;
+      return false;
     }
-    const availableQty = Number(product?.product?.qty || 0);
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      toast.error('Quantity must be greater than zero');
-      return;
-    }
-    if (quantity > availableQty) {
-      toast.error(`Only ${availableQty} available to assign`);
-      return;
+    if (quantity !== 1) {
+      toast.error('Assignment is jewelcode-wise. Quantity must be 1.');
+      return false;
     }
     if (!fromRole) {
       toast.error('Your role is missing; please re-login and try again');
-      return;
+      return false;
     }
 
     try {
       const fromName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || user?.phone;
       await assignProduct({ id, toUserId, remark: 'Assigned via dashboard', fromRole, fromName, fromBusinessName: user?.businessName, quantity }).unwrap();
-      toast.success('Product assigned to jeweler');
-      loadProducts();
+      if (!silent) {
+        toast.success('Product assigned to jeweler');
+      }
+      if (!skipReload) {
+        await loadProducts();
+      }
+      return true;
     } catch (error: any) {
-      toast.error(error?.data?.message || 'Assignment failed');
+      if (!silent) {
+        toast.error(error?.data?.message || 'Assignment failed');
+      }
+      return false;
     }
   };
 
@@ -158,8 +196,13 @@ export const useProductMaster = (user: any, paging?: ExternalPaging) => {
       if (holder === 'distributor') distributorHeld += 1;
     }
 
-    return { totalQty: totalQtyFromApi, jewelerHeld, distributorHeld };
-  }, [products, totalQtyFromApi]);
+    return {
+      totalQty: totalQtyFromApi,
+      jewelerHeld,
+      distributorHeld,
+      ...priceTotals,
+    };
+  }, [products, totalQtyFromApi, priceTotals]);
 
   return {
     canAssign,
@@ -182,16 +225,11 @@ export const useProductMaster = (user: any, paging?: ExternalPaging) => {
     loadProducts,
     isLoadingProducts,
     summary,
-    qtyByProductId,
-    setQtyByProductId,
-    onUpdateQty,
-    isUpdatingProduct,
     jewelers,
     assignByProductId,
     setAssignByProductId,
-    assignQtyByProductId,
-    setAssignQtyByProductId,
     onAssignProduct,
     isAssigningProduct,
   };
 };
+

@@ -1,5 +1,4 @@
-import { useSearchParams } from 'react-router-dom';
-import { useUrlParams } from '../../hooks/useUrlParams';
+import { useUrlPagination } from '@hooks/useUrlPagination';
 
 type TablePaginationProps = {
   total: number;
@@ -45,40 +44,20 @@ const buildPageList = (current: number, totalPages: number, maxVisible = 5) => {
 };
 
 export const TablePagination = ({ total, page, pageSize, onPageChange, onPageSizeChange, pageSizeOptions = [10, 25, 50, 100], useUrlSync = true }: TablePaginationProps) => {
-  const url = useUrlParams();
+  const urlPagination = useUrlPagination();
 
   const useUrl = useUrlSync || !onPageChange || !onPageSizeChange;
-  const effectivePage = useUrl ? url.page : (page ?? 1);
-  const effectivePageSize = useUrl ? url.limit : (pageSize ?? 10);
+  const effectivePage = useUrl ? urlPagination.page : (page ?? 1);
+  const effectivePageSize = useUrl ? urlPagination.limit : (pageSize ?? 10);
 
   const safePageSize = effectivePageSize > 0 ? effectivePageSize : 10;
   const totalPages = Math.max(1, Math.ceil((total || 0) / safePageSize));
   const currentPage = clamp(effectivePage, 1, totalPages);
   const pages = buildPageList(currentPage, totalPages, 5);
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const updateParams = (nextPage: number) => {
-    const target = clamp(nextPage, 1, totalPages);
-    setSearchParams((prev) => {
-      const newParams = new URLSearchParams(prev);
-      newParams.set('page', String(target));
-      return newParams;
-    });
-  };
-
-  const updateLimit = (next: number) => {
-    const targetSize = Number(next) || 10;
-    setSearchParams((prev) => {
-      const newParams: any = new URLSearchParams(prev);
-      newParams.set('limit', targetSize);
-      newParams.set('page', '1');
-      return newParams;
-    });
-  };
 
   const handlePageChange = (nextPage: number) => {
     if (useUrl) {
-      updateParams(nextPage);
+      urlPagination.setPage(clamp(nextPage, 1, totalPages));
     } else {
       onPageChange?.(clamp(nextPage, 1, totalPages));
     }
@@ -87,7 +66,7 @@ export const TablePagination = ({ total, page, pageSize, onPageChange, onPageSiz
   const handlePageSizeChange = (nextSize: number) => {
     const targetSize = Number(nextSize) || 10;
     if (useUrl) {
-      updateLimit(targetSize);
+      urlPagination.setLimit(targetSize);
     } else {
       onPageSizeChange?.(targetSize);
       onPageChange?.(1);

@@ -1,5 +1,5 @@
 import cron from 'node-cron'
-import { ProductModel } from '../module/product/model/product.schema'
+import { ProductModel } from '../modules/product/model/product.schema'
 import { customLog } from '../utils/common'
 
 export const runStockMonitorCron = () => {
@@ -17,3 +17,4 @@ export const runStockMonitorCron = () => {
     }
   })
 }
+

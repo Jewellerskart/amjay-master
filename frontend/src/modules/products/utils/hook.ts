@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { useListProductsMutation, useGetProductFilterQuery } from '@api/apiHooks/product';
+import { useListMarketplaceProductsMutation, useGetProductFilterQuery } from '@api/apiHooks/product';
 import { FilterState, Product, Facets, Bounds, ProductListResponse, FacetKey } from './type';
 import { PAGINATION, DEFAULT_BOUNDS, INITIAL_FILTERS } from './variables';
-import { regexOr, parseBounds, validateFilterBounds } from './filter';
+import { encodeFacetFilter, regexOr, parseBounds, validateFilterBounds } from './filter';
 
 import { Dispatch, SetStateAction } from 'react';
 
@@ -12,6 +12,33 @@ interface UseProductMarketplaceProps {
   filters: FilterState;
   setFilters: Dispatch<SetStateAction<FilterState>>;
 }
+
+const NO_DIAMOND_LABEL = 'No Diamond';
+const NO_BASE_QUALITY_LABEL = 'No Base Quality';
+
+const normalizeFacetValues = (values: unknown, options?: { noneLabel?: string; includeNoneOption?: boolean }): string[] => {
+  const rows = Array.isArray(values) ? values : [];
+  const unique = new Set<string>();
+  let hasEmpty = false;
+
+  rows.forEach((raw) => {
+    const value = `${raw || ''}`.trim();
+    if (!value) {
+      hasEmpty = true;
+      return;
+    }
+    unique.add(value);
+  });
+
+  const sorted = Array.from(unique).sort((a, b) => a.localeCompare(b));
+  if (options?.includeNoneOption && options.noneLabel) {
+    if (hasEmpty || !sorted.includes(options.noneLabel)) {
+      sorted.unshift(options.noneLabel);
+    }
+  }
+
+  return sorted;
+};
 
 export const useProductMarketplace = ({ includeAssignedClones = false, filters, setFilters }: UseProductMarketplaceProps) => {
   const [page, setPage] = useState<number>(PAGINATION.DEFAULT_PAGE);
@@ -28,21 +55,21 @@ export const useProductMarketplace = ({ includeAssignedClones = false, filters, 
   const [bounds, setBounds] = useState<Bounds>(DEFAULT_BOUNDS);
   const hasInitialized = useRef(false);
 
-  const [listProducts, { isLoading }] = useListProductsMutation();
+  const [listProducts, { isLoading }] = useListMarketplaceProductsMutation();
 
   const { data: filterData, isLoading: filterLoading, isSuccess } = useGetProductFilterQuery();
   useEffect(() => {
     if (isSuccess && filterData) {
       const filters = filterData.data.filters;
       setFacets({
-        metals: filters.baseMetals || [],
-        baseQualities: filters.baseQualities || [],
-        diamonds: filters.baseStones || [],
-        category: filters.category || [],
-        subCategory: filters.subCategory || [],
+        metals: normalizeFacetValues(filters.baseMetals),
+        baseQualities: normalizeFacetValues(filters.baseQualities, { noneLabel: NO_BASE_QUALITY_LABEL, includeNoneOption: true }),
+        diamonds: normalizeFacetValues(filters.baseStones, { noneLabel: NO_DIAMOND_LABEL, includeNoneOption: true }),
+        category: normalizeFacetValues(filters.category),
+        subCategory: normalizeFacetValues(filters.subCategory),
       });
     }
-  }, [isSuccess, filterLoading]);
+  }, [filterData, isSuccess, filterLoading]);
   const fetchProducts = useCallback(
     async (options: { reset?: boolean; overrideFilters?: FilterState } = {}) => {
       const { reset = false, overrideFilters } = options;
@@ -58,7 +85,8 @@ export const useProductMarketplace = ({ includeAssignedClones = false, filters, 
           group: regexOr(activeFilters.category),
           subCategory: regexOr(activeFilters.subCategory),
           metals: regexOr(activeFilters.metals),
-          diamonds: regexOr(activeFilters.diamonds),
+          baseQualities: encodeFacetFilter(activeFilters.baseQualities, NO_BASE_QUALITY_LABEL),
+          diamonds: encodeFacetFilter(activeFilters.diamonds, NO_DIAMOND_LABEL),
           minWeight: activeFilters.minWeight,
           maxWeight: activeFilters.maxWeight,
           minPrice: activeFilters.minPrice,
@@ -70,6 +98,7 @@ export const useProductMarketplace = ({ includeAssignedClones = false, filters, 
           currentHolderUserId: activeFilters.currentHolderUserId || '',
           startDate: activeFilters.startDate || '',
           endDate: activeFilters.endDate || '',
+          sortBy: activeFilters.sortBy || 'createdAt',
           sortDir: activeFilters.sortDir || 'desc',
           includeAssignedClones,
         }).unwrap()) as ProductListResponse;
@@ -113,7 +142,7 @@ export const useProductMarketplace = ({ includeAssignedClones = false, filters, 
   const resetFilters = useCallback(() => {
     setFilters(INITIAL_FILTERS);
     setPage(PAGINATION.DEFAULT_PAGE);
-    fetchProducts({ reset: true });
+    fetchProducts({ reset: true, overrideFilters: INITIAL_FILTERS });
   }, [fetchProducts, setFilters]);
 
   const updateFilter = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
@@ -184,9 +213,9 @@ export const useProductActions = ({ userId, onProductAccepted }: UseProductActio
   );
 
   const handleInquiry = useCallback(
-    async (productId?: string) => {
-      if (!productId) {
-        toast.error('Invalid product');
+    async (styleCode?: string) => {
+      if (!styleCode) {
+        toast.error('Invalid style code');
         return;
       }
 
@@ -195,15 +224,15 @@ export const useProductActions = ({ userId, onProductAccepted }: UseProductActio
         return;
       }
 
-      const quantity = getQuantity(productId);
+      const quantity = getQuantity(styleCode);
 
       try {
         const payload = {
           requiredProducts: quantity,
-          usageChoice: 'RENT',
-          preferredUsageNote: `Inquiry for product ${productId}`,
-          remark: productId,
-          styleCode: productId,
+          usageChoice: 'MEMO',
+          preferredUsageNote: `Inquiry for style ${styleCode}`,
+          remark: styleCode,
+          styleCode,
         } as any;
         await createRequest(payload).unwrap();
 
@@ -217,7 +246,7 @@ export const useProductActions = ({ userId, onProductAccepted }: UseProductActio
   );
 
   const handleAccept = useCallback(
-    async (productId?: string, mode: 'rent' | 'outright' = 'rent') => {
+    async (productId?: string, mode: 'memo' | 'rent' | 'outright' = 'memo') => {
       if (!productId) {
         toast.error('Invalid product');
         return;

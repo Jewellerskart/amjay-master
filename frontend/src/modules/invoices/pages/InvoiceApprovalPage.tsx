@@ -3,7 +3,7 @@ import { useApproveInvoiceMutation, useListInvoicesMutation } from '@api/apiHook
 import { Header } from '@common/header';
 
 export const InvoiceApprovalPage = () => {
-  const [filters, setFilters] = useState({ status: 'PURCHASE_PENDING_PAYMENT', type: 'purchase' });
+  const [filters, setFilters] = useState({ status: 'PURCHASE_PENDING_PAYMENT', type: '' });
   const [listInvoices, { data, isLoading }] = useListInvoicesMutation();
   const [approveInvoice, { isLoading: approving }] = useApproveInvoiceMutation();
 
@@ -26,16 +26,18 @@ export const InvoiceApprovalPage = () => {
         <div className="row g-2 mb-3">
           <div className="col-md-3">
             <select className="form-select" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}>
+              <option value="">All statuses</option>
               <option value="PURCHASE_PENDING_PAYMENT">Pending Payment</option>
-              <option value="RENTED">Rented</option>
+              <option value="MEMO_PENDING_PAYMENT">Memo Pending Payment</option>
               <option value="ACTIVE">Active</option>
               <option value="PAID">Paid</option>
             </select>
           </div>
           <div className="col-md-3">
             <select className="form-select" value={filters.type} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}>
+              <option value="">All types</option>
               <option value="purchase">Purchase</option>
-              <option value="rent">Rent</option>
+              <option value="memo">Memo</option>
             </select>
           </div>
         </div>
@@ -66,15 +68,15 @@ export const InvoiceApprovalPage = () => {
                 invoices.map((inv: any) => (
                   <tr key={inv._id}>
                     <td>{inv._id}</td>
-                    <td>{inv.userId}</td>
-                    <td>{inv.productId}</td>
+                    <td>{inv.userEmail || '-'}</td>
+                    <td>{inv.product?.product?.jewelCode || inv.productSnapshot?.product?.jewelCode || inv.productId}</td>
                     <td>{inv.amount}</td>
                     <td>{inv.status}</td>
-                    <td>{inv.type}</td>
+                    <td>{`${inv.type || ''}`.toLowerCase() === 'memo' || `${inv.type || ''}`.toLowerCase() === 'rent' ? 'memo' : inv.type}</td>
                     <td>
                       {inv.status !== 'PAID' && (
                         <button className="btn btn-sm btn-success" disabled={approving} onClick={() => onApprove(inv._id)}>
-                          Approve & Activate
+                          {inv.status === 'MEMO_PENDING_PAYMENT' ? 'Approve & Mark Paid' : 'Approve & Activate'}
                         </button>
                       )}
                     </td>
