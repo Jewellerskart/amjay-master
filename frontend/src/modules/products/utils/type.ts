@@ -96,6 +96,11 @@ export interface ProductGridProps {
 export interface Product {
   finalPrice: any;
   liveMetal: any;
+  baseAmount?: number;
+  taxableAmount?: number;
+  taxAmount?: number;
+  taxPercent?: number;
+  commissionTotal?: number;
   _id: string;
   qty?: number;
   styleCode?: string;
@@ -142,6 +147,9 @@ export interface Product {
     itemCode?: string;
     pieces?: number;
     weight?: number;
+    clarity?: string;
+    shape?: string;
+    pointer?: number;
     rate?: number;
     amount?: number;
   }>;

@@ -9,6 +9,8 @@ const InvoiceSchema: Schema<IInvoice> = new Schema(
     requestedByEmail: { type: String, default: null, lowercase: true, trim: true },
     amount: { type: Number, required: true },
     grossAmount: { type: Number, required: true },
+    taxAmount: { type: Number, default: 0 },
+    taxPercent: { type: Number, default: 3 },
     commissionTotal: { type: Number, default: 0 },
     commissionBreakdown: [
       {

@@ -7,6 +7,14 @@ const rawBaseQuery = fetchBaseQuery({
   credentials: 'include',
 });
 
+let lastSessionExpiryToastAt = 0;
+const showSessionExpiredToast = () => {
+  const now = Date.now();
+  if (now - lastSessionExpiryToastAt < 4000) return;
+  lastSessionExpiryToastAt = now;
+  toast.error('Session expired. Please login again.');
+};
+
 const baseQueryWithReauth = async (args: unknown, api: unknown, extraOptions: unknown) => {
   let result: any = await rawBaseQuery(args as any, api as any, extraOptions as any);
 
@@ -20,7 +28,7 @@ const baseQueryWithReauth = async (args: unknown, api: unknown, extraOptions: un
     if (refreshResult?.data?.status_code === 200 || refreshResult?.data?.success) {
       result = await rawBaseQuery(args as any, api as any, extraOptions as any);
     } else {
-      toast.error('Session expired. Please login again.');
+      showSessionExpiredToast();
     }
   }
 

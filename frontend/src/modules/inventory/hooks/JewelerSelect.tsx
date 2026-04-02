@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import QrSearchInput from '@common/QrSearchInput';
 
 interface JewelerOption {
   id: string;
@@ -22,7 +23,6 @@ export const JewelerSelect = ({ value, onChange, jewelers, placeholder = 'Select
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedJeweler = jewelers.find((j) => j.id === value);
   const filteredJewelers = jewelers.filter((j) => `${j.label.name} ${j.label.businessName} ${j.label.email}`.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -36,7 +36,10 @@ export const JewelerSelect = ({ value, onChange, jewelers, placeholder = 'Select
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-      inputRef.current?.focus();
+      const input = dropdownRef.current?.querySelector('input');
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+      }
     }
 
     return () => {
@@ -59,15 +62,18 @@ export const JewelerSelect = ({ value, onChange, jewelers, placeholder = 'Select
 
       {isOpen && (
         <div className="jeweler-select-dropdown">
-          <div className="jeweler-select-search">
-            <i className="fa fa-search jeweler-select-search-icon" />
-            <input ref={inputRef} type="text" className="form-control form-control-sm" placeholder="Search jewelers..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onClick={(e) => e.stopPropagation()} />
-            {searchTerm && (
-              <button type="button" className="jeweler-select-clear" onClick={() => setSearchTerm('')}>
-                <i className="fa fa-times" />
-              </button>
-            )}
-          </div>
+          <QrSearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            onClear={() => setSearchTerm('')}
+            placeholder="Search jewelers..."
+            ariaLabel="Search jewelers"
+            wrapperClassName="jeweler-select-search"
+            inputClassName="form-control form-control-sm pm-search-input"
+            showSearchButton={false}
+            stopPropagationOnInputClick
+            scanButtonAriaLabel="Scan jeweler QR"
+          />
 
           <div className="jeweler-select-list">
             {value && (

@@ -172,6 +172,14 @@
       padding-right: 68px;
       font-size: 12px;
     }
+
+    .pm-input-wrap.pm-input-wrap--qr .pm-search-input {
+      padding-right: 148px;
+    }
+
+    .pm-input-wrap.pm-input-wrap--qr.pm-input-wrap--qr-no-action .pm-search-input {
+      padding-right: 116px;
+    }
   }
 
   .product-grid-loading {

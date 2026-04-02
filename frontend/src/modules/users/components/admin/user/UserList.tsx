@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { AuthApi } from '@api/index';
 import type { ApiResponse } from '@api/types';
 import { UrlTablePagination } from '@common/TablePagination';
+import QrSearchInput from '@common/QrSearchInput';
 import { useUrlPagination } from '@hooks/useUrlPagination';
 import { UserAccountUrl } from '@variable';
 import type { UserEntity, UsersSummary } from '../../../types';
@@ -192,23 +193,17 @@ export const UserList = () => {
             <div className="row align-items-end">
               <div className="col-md-5 mb-2">
                 <label className="mb-1 small text-muted">Search</label>
-                <div className="pm-input-wrap">
-                  <input
-                    className="form-control pm-search-input"
-                    value={searchInput}
-                    onChange={(event) => setSearchInput(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') onSearch();
-                    }}
-                    placeholder="Name, email, phone or business"
-                  />
-                  <button type="button" className="pm-input-icon pm-input-action" onClick={onSearch} aria-label="Search users">
-                    <i className="fa fa-search" aria-hidden="true" />
-                  </button>
-                  <button type="button" className="pm-input-clear" onClick={resetSearchFilters} aria-label="Reset user filters">
-                    <i className="fa fa-times" aria-hidden="true" />
-                  </button>
-                </div>
+                <QrSearchInput
+                  value={searchInput}
+                  onChange={setSearchInput}
+                  onSearch={onSearch}
+                  onClear={resetSearchFilters}
+                  placeholder="Name, email, phone or business"
+                  ariaLabel="Search users"
+                  searchButtonAriaLabel="Search users"
+                  clearButtonAriaLabel="Reset user filters"
+                  scanButtonAriaLabel="Scan user QR"
+                />
               </div>
               <div className="col-md-3 mb-2">
                 <label className="mb-1 small text-muted">Search By</label>

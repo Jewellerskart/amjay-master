@@ -32,6 +32,11 @@ type InventoryRow = {
   status?: string;
   usageType?: string;
   finalPrice?: number;
+  baseAmount?: number;
+  taxableAmount?: number;
+  taxAmount?: number;
+  taxPercent?: number;
+  commissionTotal?: number;
   createdAt?: string;
 };
 
@@ -146,7 +151,7 @@ export const useMyInventory = (user?: UserShape, view: 'accepted' | 'pending' = 
 
       const jewelerId = `${row?.currentHolder?.userId || ''}`.trim();
       const pricing = resolveProductPricing(row);
-      const finalPrice = Number(pricing.finalPrice);
+      const saleBaseAmount = Number(pricing.baseAmount || pricing.finalPrice);
       const usageKey = `${row?.usage?.type || row?.usageType || ''}`.trim().toLowerCase();
       const choice = usageKey === 'memo' || usageKey === 'rented' || usageKey === 'rent' ? 'MEMO' : 'PURCHASE';
 
@@ -154,13 +159,13 @@ export const useMyInventory = (user?: UserShape, view: 'accepted' | 'pending' = 
         toast.error('Unable to resolve holder for this product');
         return;
       }
-      if (!Number.isFinite(finalPrice) || finalPrice <= 0) {
+      if (!Number.isFinite(saleBaseAmount) || saleBaseAmount <= 0) {
         toast.error('Final price is missing; cannot mark sold');
         return;
       }
 
       try {
-        await sellProduct({ productId, jewelerId, salePrice: finalPrice, choice }).unwrap();
+        await sellProduct({ productId, jewelerId, salePrice: saleBaseAmount, choice }).unwrap();
         toast.success('Product marked as sold');
         await loadInventory();
       } catch (error: any) {

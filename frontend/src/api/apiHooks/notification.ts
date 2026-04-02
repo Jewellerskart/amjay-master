@@ -10,7 +10,14 @@ export const notificationApi = apiSlice.injectEndpoints({
       }),
       providesTags: ['Notification'],
     }),
+    getHeaderSummary: builder.query<ApiResponse, void>({
+      query: () => ({
+        url: '/notification/header-summary',
+        method: 'GET',
+      }),
+      providesTags: ['Notification'],
+    }),
   }),
 });
 
-export const { useGetAdminNotificationsQuery } = notificationApi;
+export const { useGetAdminNotificationsQuery, useGetHeaderSummaryQuery } = notificationApi;

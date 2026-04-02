@@ -7,6 +7,7 @@ import { OrderTransactionModel } from '../model/orderTransaction.schema'
 import { createTicket } from '../../ticket/service/ticket.service'
 import { UserModel } from '../../auth/model/auth.schema'
 import { calculateCommissionForSale, getUserCommissionConfig } from '../../commission/service/commission-calculator'
+import { computeFinalPriceWithTax } from '../../product/utils/pricing'
 import { customLog } from '../../../utils/common'
 import { sendDynamicEmail } from '../../../config/mail'
 import { AutoAssignFailureMailTemplate } from '../../../mails-temp'
@@ -83,23 +84,28 @@ export const processSale = async (payload: {
         invoice = existingPurchaseInvoice
       } else {
         const requestedSalePrice = round2(Math.max(0, toFiniteNumber(payload.salePrice, 0)))
+        const grossBeforeTax = requestedSalePrice
         const productSnapshot = typeof product?.toObject === 'function' ? product.toObject() : product
         const commissionConfig = getUserCommissionConfig(jeweler as any)
         const commissionCalculation = calculateCommissionForSale({
           product: productSnapshot,
-          grossAmount: requestedSalePrice,
+          grossAmount: grossBeforeTax,
           config: commissionConfig,
         })
+        const taxBreakdown = computeFinalPriceWithTax(commissionCalculation.payableAmount)
 
         invoice = await createInvoice(
           {
             productId: payload.productId,
             userEmail: `${jeweler.email || ''}`,
             userPhone: `${jeweler.phone || ''}`,
-            finalPrice: commissionCalculation.grossAmount,
-            amount: commissionCalculation.payableAmount,
+            finalPrice: taxBreakdown.finalPrice,
+            grossAmount: commissionCalculation.grossAmount,
+            amount: taxBreakdown.finalPrice,
             commissionTotal: commissionCalculation.totalDeduction,
             commissionBreakdown: commissionCalculation.breakdown,
+            taxAmount: taxBreakdown.taxAmount,
+            taxPercent: taxBreakdown.taxPercent,
             type: 'memo',
             status: 'MEMO_PENDING_PAYMENT',
           },
@@ -141,7 +147,8 @@ export const processSale = async (payload: {
 
   const payableAmount = round2(Math.max(0, toFiniteNumber(invoice?.amount, payload.salePrice)))
   const grossAmount = round2(Math.max(0, toFiniteNumber(invoice?.grossAmount, toFiniteNumber(invoice?.liveRateAtCreation, payload.salePrice))))
-  const commissionTotal = round2(Math.max(0, toFiniteNumber(invoice?.commissionTotal, Math.max(0, grossAmount - payableAmount))))
+  const commissionTotal = round2(Math.max(0, toFiniteNumber(invoice?.commissionTotal, Math.max(0, payableAmount - grossAmount))))
+  const taxAmount = round2(Math.max(0, toFiniteNumber(invoice?.taxAmount, 0)))
 
   customLog({
     event: normalizedChoice === 'PURCHASE' ? 'pos.invoice.linked' : 'pos.invoice.created',
@@ -151,6 +158,7 @@ export const processSale = async (payload: {
     grossAmount,
     payableAmount,
     commissionTotal,
+    taxAmount,
   })
 
   customLog({
@@ -160,6 +168,7 @@ export const processSale = async (payload: {
     salePrice: payload.salePrice,
     payableAmount,
     commissionTotal,
+    taxAmount,
     choice: normalizedChoice,
   })
 
@@ -240,6 +249,14 @@ export const getPosReport = async (params: { userId?: string; userEmail?: string
         },
       },
       {
+        $lookup: {
+          from: 'invoice',
+          localField: 'invoiceId',
+          foreignField: '_id',
+          as: 'invoice',
+        },
+      },
+      {
         $project: {
           _id: 1,
           invoiceId: 1,
@@ -248,7 +265,7 @@ export const getPosReport = async (params: { userId?: string; userEmail?: string
           amount: { $ifNull: ['$amount', 0] },
           finalPrice: { $ifNull: ['$finalPrice', '$amount'] },
           commissionDeduction: {
-            $subtract: [{ $ifNull: ['$finalPrice', '$amount'] }, { $ifNull: ['$amount', 0] }],
+            $ifNull: [{ $first: '$invoice.commissionTotal' }, { $subtract: [{ $ifNull: ['$amount', 0] }, { $ifNull: ['$finalPrice', '$amount'] }] }],
           },
           jewelCode: {
             $ifNull: [{ $first: '$product.product.jewelCode' }, { $ifNull: ['$productSnapshot.jewelCode', '-'] }],
@@ -328,7 +345,7 @@ export const getPosReport = async (params: { userId?: string; userEmail?: string
 
   const totalGrossSales = round2(toFiniteNumber(transactionSummary.totalGrossSales, 0))
   const totalNetPayable = round2(toFiniteNumber(transactionSummary.totalNetPayable, 0))
-  const totalCommissionDeduction = round2(Math.max(0, totalGrossSales - totalNetPayable))
+  const totalCommissionDeduction = round2(Math.max(0, totalNetPayable - totalGrossSales))
 
   const recentTransactions = (recentTransactionsRaw || []).map((item: any) => ({
     _id: item?._id?.toString?.() || `${item?._id || ''}`,

@@ -7,9 +7,11 @@ import { useProductMaster } from '../hooks/useProductMaster';
 import { JewelerSelect } from '../../inventory/hooks/JewelerSelect';
 import { Link } from 'react-router-dom';
 import { UrlTablePagination } from '@common/TablePagination';
+import QrSearchInput from '@common/QrSearchInput';
 import { useUrlPagination } from '@hooks/useUrlPagination';
 import { useExportProductsMutation, useLazyExportProductSampleQuery, useBulkDeleteProductsMutation, usePreviewAssignProductMutation } from '@api/apiHooks/product';
 import { resolveProductPricing } from '../utils/pricing';
+import { getClarityFromItemCode, getShapeFromItemCode } from '../utils/diamondItemCode';
 import * as XLSX from 'xlsx';
 
 type BulkUploadRow = Record<string, any>;
@@ -82,6 +84,41 @@ const getUsageLabel = (usage?: string) => {
   const key = `${usage || ''}`.toLowerCase();
   if (key === 'memo' || key === 'rented' || key === 'rent') return 'memo';
   return key || '-';
+};
+
+const getPrimaryDiamondComponent = (product: any) => {
+  const components = Array.isArray(product?.components) ? product.components : [];
+  return components.find((component: any) => `${component?.type || ''}`.trim().toLowerCase() === 'diamond') || null;
+};
+
+const getDiamondPointer = (product: any, component: any) => {
+  const explicitPointer = Number(component?.pointer);
+  if (Number.isFinite(explicitPointer) && explicitPointer > 0) return explicitPointer;
+
+  const pieces = Number(component?.pieces ?? product?.diamond?.pieces);
+  const weight = Number(component?.weight ?? product?.diamond?.weight);
+  if (!Number.isFinite(pieces) || !Number.isFinite(weight) || pieces <= 0 || weight <= 0) return null;
+  return Number(((weight / pieces) * 100).toFixed(2));
+};
+
+const formatDiamondSpec = (product: any) => {
+  const component = getPrimaryDiamondComponent(product);
+  const clarity = `${component?.clarity || getClarityFromItemCode(component?.itemCode) || ''}`.trim().toUpperCase();
+  const shape = `${component?.shape || getShapeFromItemCode(component?.itemCode) || ''}`.trim().toUpperCase();
+  const pointer = getDiamondPointer(product, component);
+  const pieces = Number(product?.diamond?.pieces || component?.pieces || 0);
+  const weight = Number(product?.diamond?.weight || component?.weight || 0);
+
+  const summary = pieces > 0 || weight > 0 ? `${pieces || 0} pcs / ${weight || 0} ct` : 'No Diamond';
+  const details: string[] = [];
+  if (clarity) details.push(`Clarity ${clarity}`);
+  if (shape) details.push(`Shape ${shape}`);
+  if (Number.isFinite(pointer as number) && Number(pointer) > 0) details.push(`Pointer ${Number(pointer).toFixed(2)}`);
+
+  return {
+    summary,
+    details: details.length ? details.join(' | ') : 'Clarity / Shape / Pointer not set',
+  };
 };
 
 export const ProductCatalogPage = () => {
@@ -648,23 +685,17 @@ export const ProductCatalogPage = () => {
               <div className="row align-items-end w-100">
                 <div className="col-lg-4 mb-2">
                   <label className="small text-muted mb-1">Search</label>
-                  <div className="pm-input-wrap">
-                    <input
-                      className="form-control pm-search-input"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') onSearch();
-                      }}
-                      placeholder="Search jewel code, style code, trans no, remarks"
-                    />
-                    <button type="button" className="pm-input-icon pm-input-action" onClick={onSearch} aria-label="Search">
-                      <i className="fa fa-search" aria-hidden="true" />
-                    </button>
-                    <button type="button" className="pm-input-clear" onClick={resetFilters} aria-label="Reset filters">
-                      <i className="fa fa-times" aria-hidden="true" />
-                    </button>
-                  </div>
+                  <QrSearchInput
+                    value={search}
+                    onChange={setSearch}
+                    onSearch={onSearch}
+                    onClear={resetFilters}
+                    placeholder="Search jewel code, style code, trans no, remarks"
+                    ariaLabel="Search products"
+                    searchButtonAriaLabel="Search"
+                    clearButtonAriaLabel="Reset filters"
+                    scanButtonAriaLabel="Scan product QR"
+                  />
                 </div>
                 <div className="col-lg-2 mb-2">
                   <label className="small text-muted mb-1">Holder Role</label>
@@ -720,7 +751,7 @@ export const ProductCatalogPage = () => {
                       <th className="sortable" onClick={() => toggleSort('qty')}>
                         Qty {renderSort('qty')}
                       </th>
-                      <th>Diamond</th>
+                      <th>Diamond Spec</th>
                       <th className="sortable" onClick={() => toggleSort('createdAt')}>
                         Created / Usage {renderSort('createdAt')}
                       </th>
@@ -754,6 +785,7 @@ export const ProductCatalogPage = () => {
                     {!isLoadingProducts &&
                       products.map((item) => {
                         const pricing = resolveProductPricing(item);
+                        const diamondSpec = formatDiamondSpec(item);
                         return (
                           <tr key={item._id} className="product-master-row">
                             {canAssign && (
@@ -775,7 +807,10 @@ export const ProductCatalogPage = () => {
                               {item?.currentHolder?.name ? <div className="small text-muted mt-1">{item.currentHolder.name}</div> : null}
                             </td>
                             <td>{item?.qty ?? item?.product?.qty ?? 0}</td>
-                            <td>{Number(item?.diamond?.pieces || 0) > 0 || Number(item?.diamond?.weight || 0) > 0 ? `${item?.diamond?.pieces || 0} pcs / ${item?.diamond?.weight || 0} ct` : 'No Diamond'}</td>
+                            <td>
+                              <div>{diamondSpec.summary}</div>
+                              <div className="small text-muted mt-1">{diamondSpec.details}</div>
+                            </td>
                             <td>
                               <span className={getUsageBadgeClass(item?.usage?.type)}>{getUsageLabel(item?.usage?.type)}</span>
                               <div className="small text-muted mt-1">{formatDateTime(item?.createdAt)}</div>
@@ -951,8 +986,24 @@ export const ProductCatalogPage = () => {
                           <strong>{formatMoney(bulkAssignPreview?.assignProductAmount)}</strong>
                         </div>
                         <div>
+                          <small>Selected Commission</small>
+                          <strong>{formatMoney(bulkAssignPreview?.assignCommissionAmount)}</strong>
+                        </div>
+                        <div>
+                          <small>Selected Tax</small>
+                          <strong>{formatMoney(bulkAssignPreview?.assignTaxAmount)}</strong>
+                        </div>
+                        <div>
                           <small>Projected Product Amount</small>
                           <strong>{formatMoney(bulkAssignPreview?.projectedProductAmount)}</strong>
+                        </div>
+                        <div>
+                          <small>Projected Commission</small>
+                          <strong>{formatMoney(bulkAssignPreview?.projectedCommissionAmount)}</strong>
+                        </div>
+                        <div>
+                          <small>Projected Tax</small>
+                          <strong>{formatMoney(bulkAssignPreview?.projectedTaxAmount)}</strong>
                         </div>
                         <div>
                           <small>75% Limit Threshold</small>
@@ -1041,8 +1092,24 @@ export const ProductCatalogPage = () => {
                           <strong>{formatMoney(assignPreview?.assignProductAmount)}</strong>
                         </div>
                         <div>
+                          <small>This Product Commission</small>
+                          <strong>{formatMoney(assignPreview?.assignCommissionAmount)}</strong>
+                        </div>
+                        <div>
+                          <small>This Product Tax</small>
+                          <strong>{formatMoney(assignPreview?.assignTaxAmount)}</strong>
+                        </div>
+                        <div>
                           <small>Projected Product Amount</small>
                           <strong>{formatMoney(assignPreview?.projectedProductAmount)}</strong>
+                        </div>
+                        <div>
+                          <small>Projected Commission</small>
+                          <strong>{formatMoney(assignPreview?.projectedCommissionAmount)}</strong>
+                        </div>
+                        <div>
+                          <small>Projected Tax</small>
+                          <strong>{formatMoney(assignPreview?.projectedTaxAmount)}</strong>
                         </div>
                         <div>
                           <small>75% Limit Threshold</small>

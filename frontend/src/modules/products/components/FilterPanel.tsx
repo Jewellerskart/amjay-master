@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { FilterPanelProps, FacetKey } from '../utils/type';
 import { calculateSliderBackground } from '../utils/filter';
+import QrSearchInput from '@common/QrSearchInput';
 
 const FACET_LABELS: Record<FacetKey, string> = {
   metals: 'Metal Type',
@@ -88,29 +89,18 @@ export const FilterPanel = ({
         </div>
 
         {/* SEARCH */}
-        <div className="filter-search-group pm-input-wrap mb-3">
-          <input
-            className="form-control pm-search-input"
-            placeholder="Search by name/style/jewel code"
-            value={filters.search}
-            onChange={(e) => onFilterChange('search', e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                onApplyFilters();
-              }
-            }}
-          />
-          <button type="button" className="pm-input-icon pm-input-action" onClick={onApplyFilters} aria-label="Search products">
-            <i className="fa fa-search" aria-hidden="true" />
-          </button>
-
-          {filters.search && (
-            <button type="button" className="pm-input-clear" onClick={() => onFilterChange('search', '')} aria-label="Reset product search">
-              <i className="fa fa-times" aria-hidden="true" />
-            </button>
-          )}
-        </div>
+        <QrSearchInput
+          value={filters.search}
+          onChange={(value) => onFilterChange('search', value)}
+          onSearch={onApplyFilters}
+          onClear={() => onFilterChange('search', '')}
+          wrapperClassName="filter-search-group mb-3"
+          placeholder="Search by name/style/jewel code"
+          ariaLabel="Search products"
+          searchButtonAriaLabel="Search products"
+          clearButtonAriaLabel="Reset product search"
+          scanButtonAriaLabel="Scan product QR"
+        />
 
         {/* FACETS */}
         <div className="accordion facet-accordion mb-3">
@@ -128,11 +118,17 @@ export const FilterPanel = ({
                 <div className={`accordion-collapse collapse ${openFacet === key ? 'show' : ''}`}>
                   <div className="accordion-body p-2">
                     <div className="d-flex mt-2">
-                      <input
-                        className="form-control form-control-sm mb-2"
-                        placeholder={`Search ${FACET_LABELS[key]}`}
+                      <QrSearchInput
                         value={facetSearch[key]}
-                        onChange={(e) => handleFacetSearch(key, e.target.value)}
+                        onChange={(value) => handleFacetSearch(key, value)}
+                        onClear={() => handleFacetSearch(key, '')}
+                        wrapperClassName="w-100 mb-2"
+                        inputClassName="form-control form-control-sm pm-search-input"
+                        placeholder={`Search ${FACET_LABELS[key]}`}
+                        ariaLabel={`Search ${FACET_LABELS[key]}`}
+                        clearButtonAriaLabel={`Reset ${FACET_LABELS[key]} search`}
+                        scanButtonAriaLabel={`Scan ${FACET_LABELS[key]} QR`}
+                        showSearchButton={false}
                       />
 
                       <button className="btn btn-link mx-2" type="button" onClick={() => onClearSelection(key)}>

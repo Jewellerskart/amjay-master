@@ -107,6 +107,111 @@ a {
   }
 }
 
+.pm-input-wrap.pm-input-wrap--qr .pm-search-input {
+  padding-right: 148px;
+}
+
+.pm-input-wrap.pm-input-wrap--qr.pm-input-wrap--qr-no-action .pm-search-input {
+  padding-right: 116px;
+}
+
+.pm-input-wrap.pm-input-wrap--qr .pm-input-icon.pm-input-action {
+  right: 108px;
+}
+
+.pm-input-wrap.pm-input-wrap--qr .pm-input-icon.pm-input-scan {
+  right: 40px;
+  width: 62px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #c8d4e8;
+  background: #edf3ff;
+  color: #2b4f84;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  gap: 4px;
+
+  &:hover {
+    border-color: #aebfda;
+    background: #dfe9fb;
+    color: #19365f;
+  }
+
+  &:disabled {
+    opacity: 0.65;
+  }
+}
+
+.pm-input-wrap.pm-input-wrap--qr .pm-input-scan-text {
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.pm-input-wrap.pm-input-wrap--qr .pm-input-clear {
+  right: 10px;
+}
+
+@media (max-width: 575.98px) {
+  .pm-input-wrap.pm-input-wrap--qr .pm-input-scan-text {
+    display: none;
+  }
+
+  .pm-input-wrap.pm-input-wrap--qr .pm-input-icon.pm-input-scan {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .pm-input-wrap.pm-input-wrap--qr .pm-search-input {
+    padding-right: 116px;
+  }
+
+  .pm-input-wrap.pm-input-wrap--qr.pm-input-wrap--qr-no-action .pm-search-input {
+    padding-right: 84px;
+  }
+}
+
+.qr-scan-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.qr-scan-modal {
+  width: min(460px, 100%);
+}
+
+.qr-scan-video-wrap {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: #0f172a;
+  min-height: 280px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-scan-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qr-scan-placeholder {
+  color: #e2e8f0;
+  text-align: center;
+  padding: 16px;
+}
+
 .brand-logo {
   min-height: 56px;
   padding: 0 0 0 15px;

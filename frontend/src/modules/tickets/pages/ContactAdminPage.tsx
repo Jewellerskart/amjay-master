@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Header } from '@common/header';
+import QrSearchInput from '@common/QrSearchInput';
 import { ContactAdminApi, ProductApi } from '@api/index';
 import { useAuthSellerLogin } from '@hooks/sellerAuth';
 import { isAdminRole } from '@shared/utils/roles';
@@ -396,15 +397,17 @@ export const ContactAdminPage = () => {
               <div className="row mb-3 align-items-end">
                 <div className="col-md-4 mb-2">
                   <label className="mb-1 small text-muted">Search</label>
-                  <div className="pm-input-wrap">
-                    <input className="form-control pm-search-input" placeholder="Search subject/message/status" value={mySearch} onChange={(e) => setMySearch(e.target.value)} />
-                    <button type="button" className="pm-input-icon pm-input-action" onClick={runMySearch} aria-label="Search my queries">
-                      <i className="fa fa-search" aria-hidden="true" />
-                    </button>
-                    <button type="button" className="pm-input-clear" onClick={clearMyFilters} aria-label="Reset my query filters">
-                      <i className="fa fa-times" aria-hidden="true" />
-                    </button>
-                  </div>
+                  <QrSearchInput
+                    value={mySearch}
+                    onChange={setMySearch}
+                    onSearch={runMySearch}
+                    onClear={clearMyFilters}
+                    placeholder="Search subject/message/status"
+                    ariaLabel="Search my queries"
+                    searchButtonAriaLabel="Search my queries"
+                    clearButtonAriaLabel="Reset my query filters"
+                    scanButtonAriaLabel="Scan query QR"
+                  />
                 </div>
                 <div className="col-md-2 mb-2">
                   <label className="mb-1 small text-muted">Status</label>
@@ -498,23 +501,21 @@ export const ContactAdminPage = () => {
                   <div className="row mb-3 align-items-end">
                     <div className="col-md-4 mb-2">
                       <label className="mb-1 small text-muted">Search</label>
-                      <div className="pm-input-wrap">
-                        <input
-                          className="form-control pm-search-input"
-                          placeholder="Search user/subject/message"
-                          value={adminSearch}
-                          onChange={(e) => {
-                            setAdminSearch(e.target.value);
-                            setAdminPage(1);
-                          }}
-                        />
-                        <button type="button" className="pm-input-icon pm-input-action" onClick={runAdminSearch} disabled={isAllQueriesLoading} aria-label="Search all queries">
-                          <i className="fa fa-search" aria-hidden="true" />
-                        </button>
-                        <button type="button" className="pm-input-clear" onClick={clearAdminFilters} disabled={isAllQueriesLoading} aria-label="Reset admin query filters">
-                          <i className="fa fa-times" aria-hidden="true" />
-                        </button>
-                      </div>
+                      <QrSearchInput
+                        value={adminSearch}
+                        onChange={(value) => {
+                          setAdminSearch(value);
+                          setAdminPage(1);
+                        }}
+                        onSearch={runAdminSearch}
+                        onClear={clearAdminFilters}
+                        placeholder="Search user/subject/message"
+                        ariaLabel="Search all queries"
+                        disabled={isAllQueriesLoading}
+                        searchButtonAriaLabel="Search all queries"
+                        clearButtonAriaLabel="Reset admin query filters"
+                        scanButtonAriaLabel="Scan query QR"
+                      />
                     </div>
                     <div className="col-md-2 mb-2">
                       <label className="mb-1 small text-muted">Status</label>
@@ -691,27 +692,20 @@ export const ContactAdminPage = () => {
                     <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap">
                       <label className="mb-1">Browse Products</label>
                       <div className="d-flex align-items-center product-browse-actions">
-                        <div className="pm-input-wrap product-browse-search-wrap">
-                          <input
-                            className="form-control product-browse-search pm-search-input"
-                            value={productBrowseSearch}
-                            onChange={(e) => setProductBrowseSearch(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                runProductBrowseSearch();
-                              }
-                            }}
-                            placeholder="Search code/style/client"
-                            aria-label="Search products"
-                          />
-                          <button type="button" className="pm-input-icon pm-input-action" onClick={runProductBrowseSearch} disabled={isProductBrowseLoading} aria-label="Search products">
-                            <i className="fa fa-search" aria-hidden="true" />
-                          </button>
-                          <button type="button" className="pm-input-clear" onClick={clearProductBrowseSearch} disabled={isProductBrowseLoading} aria-label="Reset product browse search">
-                            <i className="fa fa-times" aria-hidden="true" />
-                          </button>
-                        </div>
+                        <QrSearchInput
+                          value={productBrowseSearch}
+                          onChange={setProductBrowseSearch}
+                          onSearch={runProductBrowseSearch}
+                          onClear={clearProductBrowseSearch}
+                          placeholder="Search code/style/client"
+                          ariaLabel="Search products"
+                          wrapperClassName="product-browse-search-wrap"
+                          inputClassName="form-control product-browse-search pm-search-input"
+                          disabled={isProductBrowseLoading}
+                          searchButtonAriaLabel="Search products"
+                          clearButtonAriaLabel="Reset product browse search"
+                          scanButtonAriaLabel="Scan product QR"
+                        />
                       </div>
                     </div>
                     <div className="form-row">

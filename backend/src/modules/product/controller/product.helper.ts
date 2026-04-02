@@ -3,6 +3,7 @@ import { createProductsBulk } from '../model/product.service'
 import { findDiamondRateMatch } from '../model/rate.service'
 import { IBulkImportParams } from '../type/product'
 import type { MetalRates } from '../utils/pricing'
+import { withComponentCostSnapshot } from '../../../utils/pricing'
 
 const cleanString = (val: any): string | null => {
   if (val === null || val === undefined) return ''
@@ -190,36 +191,13 @@ const applyAddOnPurity = (item: any) => {
   return { ...item, weight: nextWeight }
 }
 
-const getShapeFromItemCode = (code?: string) => {
-  const shapeFromItem: Record<string, string> = { RND: 'ROUND', PEA: 'PEAR', OV: 'OVAL', EM: 'EMERALD', PRN: 'PRINCESS' }
-  const val = (code || '').toUpperCase()
-  const p3 = val.slice(0, 3)
-  if (shapeFromItem[p3]) return shapeFromItem[p3]
-  const p2 = val.slice(0, 2)
-  if (shapeFromItem[p2]) return shapeFromItem[p2]
-  return ''
-}
-const getClarityFromItemCode = (code?: string) => {
-  const clarityMap: Record<string, string> = { 'VVS-VS': 'VVS-VS', 'VS-SI': 'VS-SI', VVS: 'VVS', VS: 'VS', SI: 'SI' }
-  const val = (code || '').toUpperCase()
-
-  const len = val.length
-  if (len >= 6) {
-    const s5 = val.slice(len - 6)
-    if (clarityMap[s5]) return clarityMap[s5]
-  }
-  return ''
-}
 const applyDiamondRatesToComponents = async (items: any[]) => {
   for (const item of items) {
     const components: any[] = Array.isArray(item?.components) ? item.components : []
 
-    let diamondTotal = 0
-
     for (const comp of components) {
       const compType = (comp?.type || '').toLowerCase()
       if (compType !== 'diamond') {
-        diamondTotal += comp?.amount
         continue
       }
 
@@ -236,22 +214,21 @@ const applyDiamondRatesToComponents = async (items: any[]) => {
         continue
       }
 
-      const perStone = weight / pieces
-      const clarity = getClarityFromItemCode(comp?.itemCode)
-      const shape = getShapeFromItemCode(comp?.itemCode)
-      const rateMatch = await findDiamondRateMatch({ carat: perStone, clarity, shape })
+      const perStone = pieces > 0 && weight > 0 ? weight / pieces : 0
+      const rateMatch = await findDiamondRateMatch({
+        carat: perStone,
+        itemCode: comp?.itemCode,
+      })
       if (rateMatch) {
         const ratePerCarat = Number(rateMatch.ratePerCarat || 0)
         const amount = Number((weight * ratePerCarat).toFixed(2))
 
         comp.amount = amount
-        comp.clarity = clarity || rateMatch.clarity
-        comp.shape = shape || rateMatch.shape
-
-        diamondTotal += amount
       }
     }
-    item.cost.totalCost = diamondTotal
+
+    const nextWithCost = withComponentCostSnapshot(item)
+    item.cost = nextWithCost.cost
   }
 }
 export const normalizeRole = (role?: string) => {

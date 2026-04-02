@@ -51,6 +51,10 @@ type TListOtherRateChart = {
   category?: string;
   isActive?: boolean;
 };
+type TDiamondItemCodeMappingPayload = {
+  clarityMap?: Record<string, string>;
+  shapeMap?: Record<string, string>;
+};
 type IAcceptAssignedProduct = { id: string; mode: 'memo' | 'rent' | 'outright'; remark?: string };
 export const apiHooks = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -191,6 +195,21 @@ export const apiHooks = apiSlice.injectEndpoints({
       }),
       providesTags: ['DiamondRateChart'],
     }),
+    getDiamondItemCodeMapping: builder.query<ApiResponse, void>({
+      query: () => ({
+        url: '/product/diamond-rate-chart/item-code-mapping',
+        method: 'GET',
+      }),
+      providesTags: ['DiamondRateChart'],
+    }),
+    updateDiamondItemCodeMapping: builder.mutation<ApiResponse, TDiamondItemCodeMappingPayload>({
+      query: (body) => ({
+        url: '/product/diamond-rate-chart/item-code-mapping',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['DiamondRateChart'],
+    }),
     createOtherRateChart: builder.mutation<ApiResponse, JsonRecord>({
       query: (body) => ({ url: '/product/other-rate-chart', method: 'POST', body }),
       invalidatesTags: ['OtherRateChart'],
@@ -235,6 +254,8 @@ export const {
   useDeleteDiamondRateChartMutation,
   useMatchDiamondRateChartQuery,
   useListMissingDiamondRatesQuery,
+  useGetDiamondItemCodeMappingQuery,
+  useUpdateDiamondItemCodeMappingMutation,
   useAcceptAssignedProductMutation,
   useRejectAssignedProductMutation,
   useExportProductsMutation,

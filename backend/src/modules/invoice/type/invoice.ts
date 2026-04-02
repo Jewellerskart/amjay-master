@@ -16,6 +16,8 @@ export interface IInvoice extends Document {
   userPhone: string
   amount: number
   grossAmount: number
+  taxAmount: number
+  taxPercent: number
   commissionTotal: number
   commissionBreakdown: IInvoiceCommissionComponent[]
   status: InvoiceStatus

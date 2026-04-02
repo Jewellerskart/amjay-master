@@ -33,6 +33,8 @@ export const createInvoice = async (
     amount?: number
     finalPrice?: number
     grossAmount?: number
+    taxAmount?: number
+    taxPercent?: number
     commissionTotal?: number
     commissionBreakdown?: IInvoiceCommissionComponent[]
     type: InvoiceType
@@ -46,6 +48,8 @@ export const createInvoice = async (
   const fallbackAmount = toFiniteNumber(payload.amount, NaN)
   const payloadFinalPrice = Number(payload.finalPrice)
   const payloadGrossAmount = Number(payload.grossAmount)
+  const payloadTaxAmount = Number(payload.taxAmount)
+  const payloadTaxPercent = Number(payload.taxPercent)
   const commissionTotal = round2(Math.max(0, toFiniteNumber(payload.commissionTotal, 0)))
   const commissionBreakdown = sanitizeCommissionBreakdown(payload.commissionBreakdown)
   const missing: string[] = []
@@ -74,7 +78,20 @@ export const createInvoice = async (
           ? snapshotTotalCost
           : fallbackAmount
     const resolvedGrossAmount = Number.isFinite(payloadGrossAmount) ? payloadGrossAmount : resolvedFinalPrice
-    const resolvedPayableAmount = Number.isFinite(fallbackAmount) ? Math.max(0, fallbackAmount) : Math.max(0, resolvedGrossAmount - commissionTotal)
+    const resolvedTaxableAmount = Math.max(0, resolvedGrossAmount + commissionTotal)
+    const resolvedTaxAmount = Number.isFinite(payloadTaxAmount)
+      ? Math.max(0, payloadTaxAmount)
+      : Number.isFinite(payloadFinalPrice)
+        ? Math.max(0, payloadFinalPrice - resolvedTaxableAmount)
+        : 0
+    const resolvedPayableAmount = Number.isFinite(fallbackAmount)
+      ? Math.max(0, fallbackAmount)
+      : Math.max(0, resolvedTaxableAmount + resolvedTaxAmount)
+    const resolvedTaxPercent = Number.isFinite(payloadTaxPercent)
+      ? Math.max(0, payloadTaxPercent)
+      : resolvedTaxableAmount > 0
+        ? round2((resolvedTaxAmount / resolvedTaxableAmount) * 100)
+        : 3
 
     if (!Number.isFinite(resolvedFinalPrice) || !Number.isFinite(resolvedGrossAmount) || !Number.isFinite(resolvedPayableAmount)) {
       const error = new Error('Unable to resolve finalPrice for invoice')
@@ -90,6 +107,8 @@ export const createInvoice = async (
           userPhone: trimmedPhone,
           amount: round2(resolvedPayableAmount),
           grossAmount: round2(resolvedGrossAmount),
+          taxAmount: round2(resolvedTaxAmount),
+          taxPercent: round2(resolvedTaxPercent),
           commissionTotal,
           commissionBreakdown,
           type: payload.type,
@@ -157,6 +176,7 @@ export const listInvoices = async (params: { page?: number; limit?: number; stat
           _id: null,
           totalAmount: { $sum: '$amount' },
           totalGrossAmount: { $sum: { $ifNull: ['$grossAmount', '$amount'] } },
+          totalTaxAmount: { $sum: { $ifNull: ['$taxAmount', 0] } },
           totalCommissionTotal: { $sum: { $ifNull: ['$commissionTotal', 0] } },
         },
       },
@@ -178,7 +198,8 @@ export const listInvoices = async (params: { page?: number; limit?: number; stat
 
   const totalAmount = totals?.[0]?.totalAmount || 0
   const totalGrossAmount = totals?.[0]?.totalGrossAmount || 0
+  const totalTaxAmount = totals?.[0]?.totalTaxAmount || 0
   const totalCommissionTotal = totals?.[0]?.totalCommissionTotal || 0
 
-  return { data: dataWithProduct, count, page, limit, totalAmount, totalGrossAmount, totalCommissionTotal }
+  return { data: dataWithProduct, count, page, limit, totalAmount, totalGrossAmount, totalTaxAmount, totalCommissionTotal }
 }

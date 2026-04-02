@@ -1,6 +1,11 @@
 type PricingInput = {
   liveMetal?: unknown
   finalPrice?: unknown
+  baseAmount?: unknown
+  taxableAmount?: unknown
+  taxAmount?: unknown
+  taxPercent?: unknown
+  commissionTotal?: unknown
   weight?: { pureWeight?: unknown }
   material?: { baseMetal?: unknown }
   cost?: { totalCost?: unknown; saleAmount?: unknown; metalValue?: unknown }
@@ -42,8 +47,18 @@ export const computeFinalPrice = (params: { totalCost?: unknown; liveMetal?: unk
 
 export const resolveProductPricing = (product?: PricingInput | null, liveRates?: LiveRates) => {
   const apiLiveMetal = Number(product?.liveMetal)
+  const apiBaseAmount = Number(product?.baseAmount)
+  const apiTaxableAmount = Number(product?.taxableAmount)
+  const apiTaxAmount = Number(product?.taxAmount)
+  const apiTaxPercent = Number(product?.taxPercent)
+  const apiCommissionTotal = Number(product?.commissionTotal)
   const apiFinalPrice = Number(product?.finalPrice)
   const hasApiLiveMetal = Number.isFinite(apiLiveMetal)
+  const hasApiBaseAmount = Number.isFinite(apiBaseAmount)
+  const hasApiTaxableAmount = Number.isFinite(apiTaxableAmount)
+  const hasApiTaxAmount = Number.isFinite(apiTaxAmount)
+  const hasApiTaxPercent = Number.isFinite(apiTaxPercent)
+  const hasApiCommissionTotal = Number.isFinite(apiCommissionTotal)
   const hasApiFinalPrice = Number.isFinite(apiFinalPrice)
 
   const computedLiveMetal = computeLiveMetal({
@@ -53,12 +68,19 @@ export const resolveProductPricing = (product?: PricingInput | null, liveRates?:
   })
 
   const liveMetal = hasApiLiveMetal ? apiLiveMetal : computedLiveMetal
-  const finalPrice = hasApiFinalPrice
-    ? apiFinalPrice
+  const baseAmount = hasApiBaseAmount
+    ? apiBaseAmount
     : computeFinalPrice({
         totalCost: product?.cost?.totalCost ?? product?.cost?.saleAmount ?? product?.saleAmount,
         liveMetal,
       })
+  const commissionTotal = hasApiCommissionTotal ? apiCommissionTotal : 0
+  const taxableAmount = hasApiTaxableAmount ? apiTaxableAmount : Math.max(0, baseAmount + commissionTotal)
+  const taxPercent = hasApiTaxPercent ? apiTaxPercent : 3
+  const taxAmount = hasApiTaxAmount ? apiTaxAmount : Number(((taxableAmount * taxPercent) / 100).toFixed(2))
+  const finalPrice = hasApiFinalPrice
+    ? apiFinalPrice
+    : Number((taxableAmount + taxAmount).toFixed(2))
 
-  return { liveMetal, finalPrice }
+  return { liveMetal, baseAmount, commissionTotal, taxableAmount, taxAmount, taxPercent, finalPrice }
 }

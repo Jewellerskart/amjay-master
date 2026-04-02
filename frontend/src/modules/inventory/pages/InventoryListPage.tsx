@@ -5,6 +5,7 @@ import { useAuthSellerLogin } from '@hooks/sellerAuth';
 import { ProductListUrl } from '@variable';
 import { useMyInventory } from '../hooks/useMyInventory';
 import { UrlTablePagination } from '@common/TablePagination';
+import QrSearchInput from '@common/QrSearchInput';
 import { useUrlPagination } from '@hooks/useUrlPagination';
 import { IndNumberFormat } from '@utils/formateDate';
 import { resolveProductPricing } from '../../products/utils/pricing';
@@ -29,7 +30,7 @@ type InventoryParam = {
 
 const EmptyState = ({ message }: { message: string }) => (
   <tr>
-    <td colSpan={11} className="text-muted py-4">
+    <td colSpan={13} className="text-muted py-4">
       {message}
     </td>
   </tr>
@@ -64,6 +65,8 @@ const InventoryRow = ({ item, index, page, limit, actionable, canMarkSold, selec
       <td>{Number.isFinite(netWeight) ? netWeight : '-'}</td>
       <td>{Number.isFinite(diamondCt) ? diamondCt : '-'}</td>
       <td>{IndNumberFormat(pricing.finalPrice)}</td>
+      <td>{IndNumberFormat(pricing.commissionTotal)}</td>
+      <td>{IndNumberFormat(pricing.taxAmount)}</td>
       <td className="p-0">{item.image ? <img src={item.image} alt={item?.product?.jewelCode || 'Product'} width={50} height={50} loading="lazy" className="object-fit-cover" /> : '-'}</td>
       <td>{item.qty || 0}</td>
       <td>{getStatusLabel(item.status)}</td>
@@ -183,23 +186,20 @@ const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescriptio
               </div>
 
               <form className="d-flex flex-wrap align-items-center gap-2" onSubmit={handleSearch}>
-                <div className="pm-input-wrap inventory-search-wrap">
-                  <input
-                    type="search"
-                    className="form-control pm-search-input"
-                    placeholder="Search by jewel or style code"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{ minWidth: 260 }}
-                    aria-label="Search inventory"
-                  />
-                  <button type="button" className="pm-input-icon pm-input-action" onClick={runSearch} disabled={isLoading} aria-label="Search">
-                    <i className="fa fa-search" aria-hidden="true" />
-                  </button>
-                  <button type="button" className="pm-input-clear" onClick={handleReset} disabled={isLoading} aria-label="Reset search">
-                    <i className="fa fa-times" aria-hidden="true" />
-                  </button>
-                </div>
+                <QrSearchInput
+                  value={search}
+                  onChange={setSearch}
+                  onSearch={runSearch}
+                  onClear={handleReset}
+                  placeholder="Search by jewel or style code"
+                  ariaLabel="Search inventory"
+                  wrapperClassName="inventory-search-wrap"
+                  inputStyle={{ minWidth: 260 }}
+                  disabled={isLoading}
+                  searchButtonAriaLabel="Search"
+                  clearButtonAriaLabel="Reset search"
+                  scanButtonAriaLabel="Scan inventory QR"
+                />
               </form>
             </div>
 
@@ -214,6 +214,8 @@ const InventoryPage = ({ view, pageTitle, description, heroTitle, heroDescriptio
                       <th scope="col">Net Wt</th>
                       <th scope="col">Diamond Ct</th>
                       <th scope="col">MRP</th>
+                      <th scope="col">Commission</th>
+                      <th scope="col">Tax</th>
                       <th scope="col">Image</th>
                       <th scope="col">Qty</th>
                       <th scope="col">Status</th>

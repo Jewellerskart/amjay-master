@@ -7,7 +7,7 @@ import { ProductStatus, IServiceParams } from '../../product/type/product'
 import { buildQuery as buildProductQuery, buildSortCriteria } from '../../product/model/product.query.builder'
 import { UserModel } from '../../auth/model/auth.schema'
 import { customLog } from '../../../utils/common'
-import { buildLivePricingStages } from '../../product/utils/pricing'
+import { buildLivePricingStages, calculateProductPricingFromRates, type MetalRates } from '../../../utils/pricing'
 
 export type InventoryRequestPayload = {
   requestedBy: string
@@ -23,6 +23,25 @@ const toFiniteNumber = (value: unknown, fallback = 0) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
 }
+
+const getProductPricingForInventory = (product: any, rates?: Partial<MetalRates> | null, pricingUser?: any) => {
+  const pricing = calculateProductPricingFromRates(product, rates, pricingUser)
+  return {
+    liveMetal: pricing.metalPrice,
+    metalPrice: pricing.metalPrice,
+    diamondAmount: pricing.diamondAmount,
+    laborAmount: pricing.laborAmount,
+    totalCost: pricing.totalCost,
+    MRP: pricing.MRP,
+    baseAmount: pricing.MRP,
+    commissionTotal: pricing.commission,
+    taxableAmount: pricing.MRP,
+    taxAmount: pricing.taxAmount,
+    taxPercent: pricing.taxPercent,
+    finalPrice: pricing.finalPrice,
+  }
+}
+
 const canAssignForJeweler = async (jewelerId: string) => {
   if (!mongoose.Types.ObjectId.isValid(jewelerId)) return false
   const jeweler = await UserModel.findById(jewelerId).select('role creditLimit walletBalance').lean()
@@ -231,6 +250,9 @@ export const assignProductToJeweler = async (args: {
     const status = `${product?.status || ''}`.toUpperCase()
     const usageType = `${product?.usage?.type || ''}`.toLowerCase()
     const previousHolderId = `${product?.currentHolder?.userId || ''}`.trim()
+    if (status === 'SOLD') {
+      throw new Error('Sold product cannot be reassigned')
+    }
     const isReassignablePending = status === 'ASSIGNED' && ['pending', 'assigned'].includes(usageType)
     if (status !== 'AVAILABLE' && !isReassignablePending) {
       throw new Error('Product is not available for assignment')
@@ -315,6 +337,16 @@ export const listInventory = async (
     sortDir = 'desc',
   } = params
   const { minWeight, maxWeight, minPrice, maxPrice } = params
+  const parsedMinPrice = Number.isFinite(Number(minPrice)) ? Number(minPrice) : undefined
+  const parsedMaxPrice = Number.isFinite(Number(maxPrice)) ? Number(maxPrice) : undefined
+  const normalizedMinPrice =
+    typeof parsedMinPrice === 'number' && typeof parsedMaxPrice === 'number' && parsedMinPrice > parsedMaxPrice ? parsedMaxPrice : parsedMinPrice
+  const normalizedMaxPrice =
+    typeof parsedMinPrice === 'number' && typeof parsedMaxPrice === 'number' && parsedMinPrice > parsedMaxPrice ? parsedMinPrice : parsedMaxPrice
+  const finalPriceRange: Record<string, number> = {}
+  if (typeof normalizedMinPrice === 'number') finalPriceRange.$gte = normalizedMinPrice
+  if (typeof normalizedMaxPrice === 'number') finalPriceRange.$lte = normalizedMaxPrice
+
   const payload = {
     search,
     usageType,
@@ -324,8 +356,8 @@ export const listInventory = async (
     diamonds,
     minWeight,
     maxWeight,
-    minPrice,
-    maxPrice,
+    minPrice: undefined,
+    maxPrice: undefined,
     distributorId,
     holderRole: '',
     currentHolderUserId: '',
@@ -342,6 +374,11 @@ export const listInventory = async (
   const skip = (page - 1) * limit
   const goldRate = Number(liveRates?.GoldRate ?? 0)
   const silverRate = Number(liveRates?.SilverRate ?? 0)
+  const normalizedRoleKey = holderRoleKey || ''
+  const shouldApplyCommissionPricing = normalizedRoleKey === 'jeweler' && !!holderUserId && mongoose.Types.ObjectId.isValid(holderUserId)
+  const jewelerPricingUser = shouldApplyCommissionPricing
+    ? await UserModel.findById(holderUserId).select('role commissionConfig').lean()
+    : null
   const sort = buildSortCriteria(sortBy, sortDir)
 
   const basePipeline: any[] = [
@@ -376,6 +413,10 @@ export const listInventory = async (
     })
   }
 
+  if (Object.keys(finalPriceRange).length) {
+    basePipeline.push({ $match: { finalPrice: finalPriceRange } })
+  }
+
   basePipeline.push({ $sort: sort })
   basePipeline.push({
     $project: {
@@ -404,7 +445,26 @@ export const listInventory = async (
       },
     ]),
   ])
+  const dataWithPricing = (data || []).map((row: any) => {
+    const pricing = getProductPricingForInventory(row, { GoldRate: goldRate, SilverRate: silverRate }, jewelerPricingUser)
+    return {
+      ...row,
+      liveMetal: pricing.liveMetal,
+      metalPrice: pricing.metalPrice,
+      diamondAmount: pricing.diamondAmount,
+      laborAmount: pricing.laborAmount,
+      totalCost: pricing.totalCost,
+      MRP: pricing.MRP,
+      baseAmount: pricing.baseAmount,
+      commissionTotal: pricing.commissionTotal,
+      taxableAmount: pricing.taxableAmount,
+      taxAmount: pricing.taxAmount,
+      taxPercent: pricing.taxPercent,
+      finalPrice: pricing.finalPrice,
+    }
+  })
+
   const count = countRows?.[0]?.count ?? (data?.length || 0)
   const stats = statsRows?.[0] || {}
-  return { data, count, page, limit, ...stats }
+  return { data: dataWithPricing, count, page, limit, ...stats }
 }

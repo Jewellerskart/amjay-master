@@ -1,23 +1,17 @@
-export type MetalRates = {
-  GoldRate: number
-  SilverRate: number
-}
-
-export const buildLivePricingStages = (goldRate: number, silverRate: number) => [
-  {
-    $addFields: {
-      liveMetal: {
-        $cond: [
-          { $regexMatch: { input: { $toLower: '$material.baseMetal' }, regex: 'silver' } },
-          { $multiply: [{ $ifNull: ['$weight.pureWeight', 0] }, silverRate] },
-          { $multiply: [{ $ifNull: ['$weight.pureWeight', 0] }, goldRate] },
-        ],
-      },
-    },
-  },
-  {
-    $addFields: {
-      finalPrice: { $multiply: [{ $add: [{ $ifNull: ['$cost.totalCost', 0] }, { $ifNull: ['$liveMetal', 0] }] }, 1.3] },
-    },
-  },
-]
+export {
+  GST_PERCENT,
+  GST_RATE,
+  buildLivePricingStages,
+  calculateCommissionBreakdown,
+  calculateProductPricing,
+  calculateProductPricingFromRates,
+  computeBaseAmount,
+  computeFinalPriceWithTax,
+  computeTaxAmount,
+  extractPricingComponents,
+  getLiveMetalRateForProduct,
+  withComponentCostSnapshot,
+  type MetalRates,
+  type PricingCommissionBreakdownItem,
+  type ProductPricingResult,
+} from '../../../utils/pricing'

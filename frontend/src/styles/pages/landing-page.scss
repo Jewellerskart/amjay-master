@@ -27,6 +27,9 @@
   font-style: italic;
   text-transform: uppercase;
   font-size: 20px;
+  img {
+    width: 300px;
+  }
 }
 @media (max-width: 767px) {
   .landing-page header .logo {
@@ -58,8 +61,10 @@
 .landing-page header .links li:last-child {
   border-radius: 20px;
   padding: 10px 20px;
-  color: #fff;
   background-color: #6c63ff;
+  a {
+    color: #fff;
+  }
 }
 .landing-page header .links li:not(:last-child):hover {
   color: #6c63ff;

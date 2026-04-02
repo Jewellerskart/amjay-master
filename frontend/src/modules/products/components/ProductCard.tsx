@@ -2,6 +2,7 @@ import { IndNumberFormat } from '@utils/formateDate';
 import { Link } from 'react-router-dom';
 import { ProductCardProps } from '../utils/type';
 import { resolveProductPricing } from '../utils/pricing';
+import { getClarityFromItemCode, getShapeFromItemCode } from '../utils/diamondItemCode';
 
 const MAX_VISIBLE_JEWEL_CODES = 4;
 const MAX_JEWEL_CODE_LENGTH = 10;
@@ -10,6 +11,20 @@ const truncateJewelCode = (value?: string) => {
   const jewelCode = `${value || ''}`.trim();
   if (!jewelCode) return '-';
   return jewelCode.length > MAX_JEWEL_CODE_LENGTH ? `${jewelCode.slice(0, MAX_JEWEL_CODE_LENGTH)}...` : jewelCode;
+};
+
+const getDiamondComponent = (product: any) => {
+  const components = Array.isArray(product?.components) ? product.components : [];
+  return components.find((component: any) => `${component?.type || ''}`.trim().toLowerCase() === 'diamond') || null;
+};
+
+const getDiamondPointer = (product: any, component: any) => {
+  const explicitPointer = Number(component?.pointer);
+  if (Number.isFinite(explicitPointer) && explicitPointer > 0) return explicitPointer;
+  const pieces = Number(component?.pieces ?? product?.diamond?.pieces);
+  const weight = Number(component?.weight ?? product?.diamond?.weight);
+  if (!Number.isFinite(pieces) || !Number.isFinite(weight) || pieces <= 0 || weight <= 0) return null;
+  return Number(((weight / pieces) * 100).toFixed(2));
 };
 
 export const ProductCard = ({ product, onInquiry, hideOwnership, detailHref, quantity = 1, onQuantityChange }: ProductCardProps) => {
@@ -28,6 +43,10 @@ export const ProductCard = ({ product, onInquiry, hideOwnership, detailHref, qua
   const distributor = product?.uploadedBy?.businessName || 'Owner';
   const image = product?.image || product?.media?.[0];
   const formattedPrice = IndNumberFormat(finalPrice as number | string) || 0;
+  const diamondComponent = getDiamondComponent(product);
+  const diamondClarity = `${diamondComponent?.clarity || getClarityFromItemCode(diamondComponent?.itemCode) || ''}`.trim().toUpperCase();
+  const diamondShape = `${diamondComponent?.shape || getShapeFromItemCode(diamondComponent?.itemCode) || ''}`.trim().toUpperCase();
+  const diamondPointer = getDiamondPointer(product, diamondComponent);
 
   return (
     <div className="product-card card border-0 shadow-sm">
@@ -57,6 +76,11 @@ export const ProductCard = ({ product, onInquiry, hideOwnership, detailHref, qua
               {diamond.pieces} <i className="fa fa-diamond mr-1"></i> | {diamond.weight} Cts
             </span>
           ) : null}
+          {(diamondClarity || diamondShape || Number.isFinite(diamondPointer as number)) && (
+            <span className="product-chip product-chip--muted">
+              {diamondClarity || '-'} / {diamondShape || '-'} / {Number.isFinite(diamondPointer as number) ? `${Number(diamondPointer).toFixed(2)} pt` : '-'}
+            </span>
+          )}
         </div>
 
         {jewelCodes.length > 0 ? (

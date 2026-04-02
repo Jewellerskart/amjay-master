@@ -1,8 +1,10 @@
 import { Link, useParams } from 'react-router-dom';
 import { Header } from '@common/header';
 import { useGetProductByIdQuery } from '@api/apiHooks/product';
+import { useAuthSellerLogin } from '@hooks/sellerAuth';
 import { ProductListUrl } from '@variable';
 import { resolveProductPricing } from '../utils/pricing';
+import { getClarityFromItemCode, getShapeFromItemCode } from '../utils/diamondItemCode';
 
 const InfoRow = ({ label, value }: { label: string; value?: string | number | null }) => (
   <div className="d-flex justify-content-between py-1 product-detail__row">
@@ -23,14 +25,43 @@ const formatDate = (date?: string) => {
   return Number.isNaN(dt.getTime()) ? '-' : dt.toLocaleString();
 };
 
+const getDiamondComponent = (product: any) => {
+  const components = Array.isArray(product?.components) ? product.components : [];
+  return components.find((component: any) => `${component?.type || ''}`.trim().toLowerCase() === 'diamond') || null;
+};
+
+const getDiamondSpec = (product: any) => {
+  const component = getDiamondComponent(product);
+  const clarity = `${component?.clarity || getClarityFromItemCode(component?.itemCode) || ''}`.trim().toUpperCase();
+  const shape = `${component?.shape || getShapeFromItemCode(component?.itemCode) || ''}`.trim().toUpperCase();
+  const explicitPointer = Number(component?.pointer);
+  const pieces = Number(component?.pieces ?? product?.diamond?.pieces);
+  const weight = Number(component?.weight ?? product?.diamond?.weight);
+  const pointer =
+    Number.isFinite(explicitPointer) && explicitPointer > 0
+      ? explicitPointer
+      : Number.isFinite(pieces) && Number.isFinite(weight) && pieces > 0 && weight > 0
+        ? Number(((weight / pieces) * 100).toFixed(2))
+        : null;
+
+  return {
+    clarity: clarity || '-',
+    shape: shape || '-',
+    pointer: Number.isFinite(pointer as number) ? Number(pointer).toFixed(2) : '-',
+  };
+};
+
 export const ProductDetailPage = () => {
+  const { data: user } = useAuthSellerLogin();
   const { jewelCode = '' } = useParams<{ jewelCode: string }>();
   const identifier = decodeURIComponent(jewelCode || '');
   const { data, isLoading, isError, refetch } = useGetProductByIdQuery(identifier, { skip: !identifier });
   const product = data?.data?.product;
+  const isJewelerView = `${user?.role || ''}`.trim().toLowerCase() === 'jeweler';
 
   const [coverImage, displayName] = [product?.image, product?.product?.jewelCode];
   const pricing = resolveProductPricing(product);
+  const diamondSpec = getDiamondSpec(product);
 
   return (
     <div className="content-body product-detail-page">
@@ -79,7 +110,7 @@ export const ProductDetailPage = () => {
                   <div className="pd-hero-body">
                     <div className="pd-eyebrow">Design {product?.product?.styleCode || '-'}</div>
                     <h3 className="pd-title mb-1"># {displayName}</h3>
-                    <div className="text-muted small mb-3">{(product?.product?.categoryGroupName || product?.category?.group || 'Category N/A') + ' • ' + (product?.product?.subCategory || product?.category?.subCategory || 'Sub category N/A')}</div>
+                    <div className="text-muted small mb-3">{(product?.product?.categoryGroupName || product?.category?.group || 'Category N/A') + ' | ' + (product?.product?.subCategory || product?.category?.subCategory || 'Sub category N/A')}</div>
 
                     <div className="pd-hero-chips">
                       <span className="pd-chip">
@@ -97,20 +128,24 @@ export const ProductDetailPage = () => {
                     </div>
 
                     <div className="pd-metrics">
-                      <div className="pd-metric">
-                        <p className="label">Total Cost</p>
-                        <h5 className="value">{formatMoney(product?.cost?.totalCost)}</h5>
-                        <small className="text-muted">Includes labor & metals</small>
-                      </div>
+                      {!isJewelerView && (
+                        <div className="pd-metric">
+                          <p className="label">Total Cost</p>
+                          <h5 className="value">{formatMoney(product?.cost?.totalCost)}</h5>
+                          <small className="text-muted">Includes labor & metals</small>
+                        </div>
+                      )}
                       <div className="pd-metric">
                         <p className="label">Live Metal Rate</p>
                         <h5 className="value">{formatMoney(pricing.liveMetal)}</h5>
                         <small className="text-muted">Real-time rate for this SKU</small>
                       </div>
                       <div className="pd-metric">
-                        <p className="label">Total Price </p>
+                        <p className="label">{isJewelerView ? 'Amount Payable' : 'Total Price'}</p>
                         <h5 className="value text-success">{formatMoney(pricing.finalPrice) || 'N/A'}</h5>
-                        <small className="text-muted">Usage: {product?.usage?.type || 'N/A'}</small>
+                        <small className="text-muted">
+                          {isJewelerView ? `Tax: ${formatMoney(pricing.taxAmount)} | Commission: ${formatMoney(pricing.commissionTotal)}` : `Usage: ${product?.usage?.type || 'N/A'}`}
+                        </small>
                       </div>
                     </div>
                   </div>
@@ -167,22 +202,33 @@ export const ProductDetailPage = () => {
               <div className="col-md-4 mb-3">
                 <div className="card h-100 shadow-sm pd-card">
                   <div className="card-header bg-white border-0 pb-1 d-flex align-items-center justify-content-between">
-                    <h6 className="mb-0">Weights & Cost</h6>
-                    <span className="badge bg-light text-secondary">grams / Rs.</span>
+                    <h6 className="mb-0">{isJewelerView ? 'Weights & Pricing' : 'Weights & Cost'}</h6>
+                    <span className="badge bg-light text-secondary">{isJewelerView ? 'grams / payable' : 'grams / Rs.'}</span>
                   </div>
                   <div className="card-body pt-2">
                     <InfoRow label="Gross Weight" value={product?.weight?.grossWeight ?? '-'} />
                     <InfoRow label="Net Weight" value={product?.weight?.netWeight ?? '-'} />
                     <InfoRow label="Pure Weight" value={product?.weight?.pureWeight ?? '-'} />
-                    <InfoRow label="Piece Value" value={formatMoney(product?.cost?.pieceValue)} />
-                    <InfoRow label="Metal Value" value={formatMoney(product?.cost?.metalValue)} />
                     <InfoRow label="Live Metal Rate" value={formatMoney(pricing.liveMetal)} />
-                    <InfoRow label="Diamond Value" value={formatMoney(product?.cost?.diamondValue)} />
-                    <InfoRow label="Color Stone Value" value={formatMoney(product?.cost?.colorStoneValue)} />
-                    <InfoRow label="Other Metal Value" value={formatMoney(product?.cost?.otherMetalValue)} />
-                    <InfoRow label="Set Amount" value={formatMoney(product?.cost?.setAmount)} />
-                    <InfoRow label="Hand Amount" value={formatMoney(product?.cost?.handAmount)} />
-                    <InfoRow label="Total Cost" value={formatMoney(product?.cost?.totalCost)} />
+                    {isJewelerView ? (
+                      <>
+                        <InfoRow label="Base Amount" value={formatMoney(pricing.baseAmount)} />
+                        <InfoRow label="Commission" value={formatMoney(pricing.commissionTotal)} />
+                        <InfoRow label="Tax" value={formatMoney(pricing.taxAmount)} />
+                        <InfoRow label="Final Amount" value={formatMoney(pricing.finalPrice)} />
+                      </>
+                    ) : (
+                      <>
+                        <InfoRow label="Piece Value" value={formatMoney(product?.cost?.pieceValue)} />
+                        <InfoRow label="Metal Value" value={formatMoney(product?.cost?.metalValue)} />
+                        <InfoRow label="Diamond Value" value={formatMoney(product?.cost?.diamondValue)} />
+                        <InfoRow label="Color Stone Value" value={formatMoney(product?.cost?.colorStoneValue)} />
+                        <InfoRow label="Other Metal Value" value={formatMoney(product?.cost?.otherMetalValue)} />
+                        <InfoRow label="Set Amount" value={formatMoney(product?.cost?.setAmount)} />
+                        <InfoRow label="Hand Amount" value={formatMoney(product?.cost?.handAmount)} />
+                        <InfoRow label="Total Cost" value={formatMoney(product?.cost?.totalCost)} />
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -194,10 +240,41 @@ export const ProductDetailPage = () => {
                     <span className="badge bg-light text-secondary">pcs / ct / Rs.</span>
                   </div>
                   <div className="card-body pt-2">
-                    <InfoRow label="Diamond" value={`${product?.diamond?.pieces || 0} pcs / ${product?.diamond?.weight || 0} ct / ${formatMoney(product?.diamond?.costAmount)}`} />
-                    <InfoRow label="Color Diamond" value={`${product?.colorDiamond?.pieces || 0} pcs / ${product?.colorDiamond?.weight || 0} ct / ${formatMoney(product?.colorDiamond?.costAmount)}`} />
-                    <InfoRow label="Cubic Zirconia" value={`${product?.cubicZirconia?.pieces || 0} pcs / ${product?.cubicZirconia?.weight || 0} ct / ${formatMoney(product?.cubicZirconia?.costAmount)}`} />
-                    <InfoRow label="Stone" value={`${product?.stone?.pieces || 0} pcs / ${product?.stone?.weight || 0} ct / ${formatMoney(product?.stone?.costAmount)}`} />
+                    <InfoRow
+                      label="Diamond"
+                      value={
+                        isJewelerView
+                          ? `${product?.diamond?.pieces || 0} pcs / ${product?.diamond?.weight || 0} ct`
+                          : `${product?.diamond?.pieces || 0} pcs / ${product?.diamond?.weight || 0} ct / ${formatMoney(product?.diamond?.costAmount)}`
+                      }
+                    />
+                    <InfoRow label="Diamond Clarity" value={diamondSpec.clarity} />
+                    <InfoRow label="Diamond Shape" value={diamondSpec.shape} />
+                    <InfoRow label="Diamond Pointer" value={diamondSpec.pointer} />
+                    <InfoRow
+                      label="Color Diamond"
+                      value={
+                        isJewelerView
+                          ? `${product?.colorDiamond?.pieces || 0} pcs / ${product?.colorDiamond?.weight || 0} ct`
+                          : `${product?.colorDiamond?.pieces || 0} pcs / ${product?.colorDiamond?.weight || 0} ct / ${formatMoney(product?.colorDiamond?.costAmount)}`
+                      }
+                    />
+                    <InfoRow
+                      label="Cubic Zirconia"
+                      value={
+                        isJewelerView
+                          ? `${product?.cubicZirconia?.pieces || 0} pcs / ${product?.cubicZirconia?.weight || 0} ct`
+                          : `${product?.cubicZirconia?.pieces || 0} pcs / ${product?.cubicZirconia?.weight || 0} ct / ${formatMoney(product?.cubicZirconia?.costAmount)}`
+                      }
+                    />
+                    <InfoRow
+                      label="Stone"
+                      value={
+                        isJewelerView
+                          ? `${product?.stone?.pieces || 0} pcs / ${product?.stone?.weight || 0} ct`
+                          : `${product?.stone?.pieces || 0} pcs / ${product?.stone?.weight || 0} ct / ${formatMoney(product?.stone?.costAmount)}`
+                      }
+                    />
                   </div>
                 </div>
               </div>
@@ -221,7 +298,7 @@ export const ProductDetailPage = () => {
                           <th>Weight</th>
                           <th>sizeCode</th>
                           <th>sizeName</th>
-                          <th>Cost Amt</th>
+                          {!isJewelerView && <th>Cost Amt</th>}
                           <th>Amount</th>
                         </tr>
                       </thead>
@@ -235,7 +312,7 @@ export const ProductDetailPage = () => {
                             <td>{comp?.weight ?? '-'}</td>
                             <td>{comp?.sizeCode ?? '-'}</td>
                             <td> {comp?.sizeName ?? '-'}</td>
-                            <td>{formatMoney(comp?.costAmt)}</td>
+                            {!isJewelerView && <td>{formatMoney(comp?.costAmt)}</td>}
                             <td>{formatMoney(comp?.amount)}</td>
                           </tr>
                         ))}
@@ -270,33 +347,35 @@ export const ProductDetailPage = () => {
               </div>
             </div>
 
-            <div className="card shadow-sm pd-card">
-              <div className="card-header bg-white border-0 pb-1 d-flex align-items-center justify-content-between">
-                <h6 className="mb-0">Assignment Timeline</h6>
-                <small className="text-muted">Latest first</small>
-              </div>
-              <div className="card-body">
-                {Array.isArray(product?.assignmentLogs) && product.assignmentLogs.length > 0 ? (
-                  <div className="pd-timeline">
-                    {product.assignmentLogs.map((log: any, idx: number) => (
-                      <div className="pd-timeline__item" key={`${log?.assignedAt || idx}-${idx}`}>
-                        <div className="pd-timeline__dot" />
-                        <div className="pd-timeline__content">
-                          <div className="d-flex justify-content-between align-items-center">
-                            <strong>{log?.fromName || log?.fromRole || '-'}</strong>
-                            <span className="text-muted small">{formatDate(log?.assignedAt)}</span>
+            {!isJewelerView && (
+              <div className="card shadow-sm pd-card">
+                <div className="card-header bg-white border-0 pb-1 d-flex align-items-center justify-content-between">
+                  <h6 className="mb-0">Assignment Timeline</h6>
+                  <small className="text-muted">Latest first</small>
+                </div>
+                <div className="card-body">
+                  {Array.isArray(product?.assignmentLogs) && product.assignmentLogs.length > 0 ? (
+                    <div className="pd-timeline">
+                      {product.assignmentLogs.map((log: any, idx: number) => (
+                        <div className="pd-timeline__item" key={`${log?.assignedAt || idx}-${idx}`}>
+                          <div className="pd-timeline__dot" />
+                          <div className="pd-timeline__content">
+                            <div className="d-flex justify-content-between align-items-center">
+                              <strong>{log?.fromName || log?.fromRole || '-'}</strong>
+                              <span className="text-muted small">{formatDate(log?.assignedAt)}</span>
+                            </div>
+                            <div className="text-primary small mb-1">to {log?.toName || log?.toRole || '-'}</div>
+                            <div className="text-muted small">{log?.remark || 'No remarks'}</div>
                           </div>
-                          <div className="text-primary small mb-1">to {log?.toName || log?.toRole || '-'}</div>
-                          <div className="text-muted small">{log?.remark || 'No remarks'}</div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted mb-0">No assignment history.</p>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted mb-0">No assignment history.</p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>

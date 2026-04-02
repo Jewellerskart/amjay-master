@@ -23,9 +23,11 @@ import {
   createDiamondRateController,
   deleteDiamondRateController,
   getDiamondRateByIdController,
+  getDiamondItemCodeMappingController,
   getDiamondRateMatchController,
   listMissingDiamondRatesController,
   listDiamondRatesController,
+  updateDiamondItemCodeMappingController,
   updateDiamondRateController,
   createOtherRateController,
   listOtherRatesController,
@@ -45,6 +47,7 @@ import {
   listOtherRateSchema,
   listProductsSchema,
   updateDiamondRateSchema,
+  updateDiamondItemCodeMappingSchema,
   updateOtherRateSchema,
   updateProductSchema,
 } from '../controller/product.validation'
@@ -75,6 +78,10 @@ router.route('/product/diamond-rate-chart/list').post(verifyJWT, validateRequest
 
 router.route('/product/diamond-rate-chart/match').get(verifyJWT, getDiamondRateMatchController)
 router.route('/product/diamond-rate-chart/missing').get(verifyAdmin, listMissingDiamondRatesController)
+router.route('/product/diamond-rate-chart/item-code-mapping').get(verifyJWT, getDiamondItemCodeMappingController)
+router
+  .route('/product/diamond-rate-chart/item-code-mapping')
+  .put(verifyAdmin, validateRequest(updateDiamondItemCodeMappingSchema), updateDiamondItemCodeMappingController)
 router.route('/product/diamond-rate-chart/:id').get(verifyJWT, getDiamondRateByIdController)
 router.route('/product/diamond-rate-chart/:id').put(verifyAdmin, validateRequest(updateDiamondRateSchema), updateDiamondRateController)
 router.route('/product/diamond-rate-chart/:id').delete(verifyAdmin, deleteDiamondRateController)

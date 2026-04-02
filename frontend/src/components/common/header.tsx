@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { AuthApi, ContactAdminApi, InvoiceApi, ProductApi, TicketApi, inventoryApi } from '@api/index';
+import { AuthApi, NotificationApi } from '@api/index';
 import { useAuthSellerLogin } from '@hooks/sellerAuth';
 import {
   allUserAccountUrl,
@@ -32,14 +32,6 @@ interface HeaderProps {
 
 type MenuKey = 'user' | 'product' | 'inventory' | 'sale' | 'contact' | null;
 
-const UNRESOLVED_CONTACT_STATUSES = new Set(['new', 'in-progress', 'waiting-user']);
-
-const readCollectionCount = (response: any): number => {
-  const count = Number(response?.data?.count);
-  if (Number.isFinite(count) && count >= 0) return count;
-  return Array.isArray(response?.data?.data) ? response.data.data.length : 0;
-};
-
 const formatIndicatorCount = (count: number) => (count > 99 ? '99+' : `${count}`);
 
 export const Header = ({ scriptsArr = [] }: HeaderProps) => {
@@ -51,24 +43,14 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
   const isDistributor = role === 'distributor';
   const isAccountant = role === 'accountant';
   const isPurchase = role === 'purchase';
-  const canManageRateCharts = isAdminUser || isDistributor;
+  const canViewMyInvoices = isAdminUser || isDistributor || isJeweler;
   const canApproveInvoices = isAdminUser || isAccountant;
   const { notifications, totalNotificationCount } = useUserNotifications(user);
   const [logout] = AuthApi.useLogoutMutation();
-  const [fetchUsers] = AuthApi.useGetUsersMutation();
-  const [fetchInventory] = inventoryApi.useListInventoryMutation();
-  const [fetchInvoices] = InvoiceApi.useListInvoicesMutation();
-  const [fetchAllContactQueries] = ContactAdminApi.useGetAllContactQueriesMutation();
-  const { data: missingDiamondRateData } = ProductApi.useListMissingDiamondRatesQuery(undefined, { skip: !canManageRateCharts });
-  const { data: openTicketData } = TicketApi.useListTicketsQuery(
-    { status: 'OPEN', page: 1, limit: 1 },
-    { skip: !user?._id, refetchOnMountOrArgChange: true },
-  );
-  const { data: inProgressTicketData } = TicketApi.useListTicketsQuery(
-    { status: 'IN_PROGRESS', page: 1, limit: 1 },
-    { skip: !user?._id, refetchOnMountOrArgChange: true },
-  );
-  const { data: myContactQueriesData } = ContactAdminApi.useGetMyContactQueriesQuery(undefined, { skip: !user?._id || isAdminUser });
+  const { data: headerSummaryResponse } = NotificationApi.useGetHeaderSummaryQuery(undefined, {
+    skip: !user?._id,
+    refetchOnMountOrArgChange: true,
+  });
 
   const [openMenu, setOpenMenu] = useState<MenuKey>(null);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
@@ -76,10 +58,6 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
   const [mobileOpenSection, setMobileOpenSection] = useState<MenuKey>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNotificationHoverOpen, setIsNotificationHoverOpen] = useState(false);
-  const [pendingKycCount, setPendingKycCount] = useState(0);
-  const [pendingAssignmentCount, setPendingAssignmentCount] = useState(0);
-  const [invoiceApprovalCount, setInvoiceApprovalCount] = useState(0);
-  const [contactPendingCount, setContactPendingCount] = useState(0);
 
   const accountRef = useRef<HTMLDivElement | null>(null);
   const notificationHoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,141 +109,14 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
     setMobileOpenSection(null);
   }, [location.pathname]);
 
-  useEffect(() => {
-    let isActive = true;
-
-    const loadPendingKycCount = async () => {
-      if (!isAdminUser) {
-        if (isActive) setPendingKycCount(0);
-        return;
-      }
-
-      try {
-        const response: any = await fetchUsers({ page: 1, limit: 1 }).unwrap();
-        const summaryValue = Number(response?.data?.summary?.pendingKyc);
-        if (Number.isFinite(summaryValue) && summaryValue >= 0) {
-          if (isActive) setPendingKycCount(summaryValue);
-          return;
-        }
-        const rows = Array.isArray(response?.data?.data) ? response.data.data : [];
-        const fallbackCount = rows.filter((item: any) => !item?.kycVerified).length;
-        if (isActive) setPendingKycCount(fallbackCount);
-      } catch {
-        if (isActive) setPendingKycCount(0);
-      }
-    };
-
-    void loadPendingKycCount();
-
-    return () => {
-      isActive = false;
-    };
-  }, [fetchUsers, isAdminUser]);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const loadPendingAssignments = async () => {
-      const userId = `${user?._id || ''}`.trim();
-      if (!userId) {
-        if (isActive) setPendingAssignmentCount(0);
-        return;
-      }
-
-      try {
-        const response: any = await fetchInventory({
-          page: 1,
-          limit: 1,
-          holderRole: (role || undefined) as any,
-          currentHolderUserId: userId,
-          includeAssignedClones: true,
-          includePending: true,
-        }).unwrap();
-        const nextCount = readCollectionCount(response);
-        if (isActive) setPendingAssignmentCount(nextCount);
-      } catch {
-        if (isActive) setPendingAssignmentCount(0);
-      }
-    };
-
-    void loadPendingAssignments();
-
-    return () => {
-      isActive = false;
-    };
-  }, [fetchInventory, role, user?._id]);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const loadInvoiceApprovals = async () => {
-      if (!canApproveInvoices) {
-        if (isActive) setInvoiceApprovalCount(0);
-        return;
-      }
-
-      try {
-        const [purchasePending, memoPending] = await Promise.all([
-          fetchInvoices({ page: 1, limit: 1, status: 'PURCHASE_PENDING_PAYMENT' }).unwrap().catch(() => null),
-          fetchInvoices({ page: 1, limit: 1, status: 'MEMO_PENDING_PAYMENT' }).unwrap().catch(() => null),
-        ]);
-        const nextCount = readCollectionCount(purchasePending) + readCollectionCount(memoPending);
-        if (isActive) setInvoiceApprovalCount(nextCount);
-      } catch {
-        if (isActive) setInvoiceApprovalCount(0);
-      }
-    };
-
-    void loadInvoiceApprovals();
-
-    return () => {
-      isActive = false;
-    };
-  }, [canApproveInvoices, fetchInvoices]);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const setCount = (value: number) => {
-      if (isActive) setContactPendingCount(Math.max(0, value));
-    };
-
-    const loadPendingContacts = async () => {
-      const userId = `${user?._id || ''}`.trim();
-      if (!userId) {
-        setCount(0);
-        return;
-      }
-
-      if (!isAdminUser) {
-        const rows = Array.isArray(myContactQueriesData?.data?.queries) ? myContactQueriesData.data.queries : [];
-        const nextCount = rows.filter((query: any) => {
-          const status = `${query?.status || ''}`.trim().toLowerCase();
-          return status ? UNRESOLVED_CONTACT_STATUSES.has(status) : true;
-        }).length;
-        setCount(nextCount);
-        return;
-      }
-
-      try {
-        const responses = await Promise.all(
-          Array.from(UNRESOLVED_CONTACT_STATUSES).map((status) =>
-            fetchAllContactQueries({ status, page: 1, limit: 1 }).unwrap().catch(() => null),
-          ),
-        );
-        const nextCount = responses.reduce((total, response) => total + readCollectionCount(response), 0);
-        setCount(nextCount);
-      } catch {
-        setCount(0);
-      }
-    };
-
-    void loadPendingContacts();
-
-    return () => {
-      isActive = false;
-    };
-  }, [fetchAllContactQueries, isAdminUser, myContactQueriesData, user?._id]);
+  const headerSummary = (headerSummaryResponse?.data || {}) as Record<string, any>;
+  const pendingKycCount = Number(headerSummary?.pendingKycCount || 0);
+  const pendingAssignmentCount = Number(headerSummary?.pendingAssignmentCount || 0);
+  const invoiceApprovalCount = Number(headerSummary?.invoiceApprovalCount || 0);
+  const myPendingInvoiceCount = Number(headerSummary?.myPendingInvoiceCount || 0);
+  const contactPendingCount = Number(headerSummary?.contactPendingCount || 0);
+  const supportTicketCount = Number(headerSummary?.supportTicketCount || 0);
+  const missingDiamondCount = Number(headerSummary?.missingDiamondCount || 0);
 
   const onLogout = async () => {
     try {
@@ -289,14 +140,8 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
 
   const userInitials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`.toUpperCase() || 'U';
   const previewNotifications = notifications.slice(0, 5);
-  const missingDiamondCount = useMemo(() => {
-    const list = missingDiamondRateData?.data?.data;
-    return Array.isArray(list) ? list.length : 0;
-  }, [missingDiamondRateData]);
-  const openTicketCount = useMemo(() => readCollectionCount(openTicketData), [openTicketData]);
-  const inProgressTicketCount = useMemo(() => readCollectionCount(inProgressTicketData), [inProgressTicketData]);
-  const supportTicketCount = openTicketCount + inProgressTicketCount;
   const supportPendingCount = supportTicketCount + contactPendingCount;
+  const posSalesPendingCount = canApproveInvoices ? invoiceApprovalCount : canViewMyInvoices ? myPendingInvoiceCount : 0;
 
   const renderMenuLabel = (label: string, count = 0, tone: 'is-alert' | 'is-warning' | 'is-neutral' = 'is-alert') => (
     <span className="header-item-inline">
@@ -456,7 +301,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                   }}
                   onMouseEnter={() => window.innerWidth > 991 && setOpenMenu('sale')}
                 >
-                  {renderMenuLabel('POS & Sales', invoiceApprovalCount)}
+                  {renderMenuLabel('POS & Sales', posSalesPendingCount)}
                 </button>
                 {openMenu === 'sale' && (
                   <div className="header-dropdown-menu header-dropdown-menu-static">
@@ -468,9 +313,9 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                         {renderMenuLabel('Invoice Approvals', invoiceApprovalCount)}
                       </NavLink>
                     )}
-                    {(isAdminUser || isDistributor || isJeweler) && (
+                    {canViewMyInvoices && (
                       <NavLink to={invoicePageUrl} className="header-dropdown-item">
-                        My Invoices
+                        {renderMenuLabel('My Invoices', myPendingInvoiceCount)}
                       </NavLink>
                     )}
                   </div>
@@ -677,7 +522,7 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
 
                 <div className="mobile-master-block">
                   <button type="button" className="mobile-nav-link mobile-nav-link-toggle" onClick={() => toggleMobileSection('sale')}>
-                    {renderMenuLabel('POS & Sales', invoiceApprovalCount)}
+                    {renderMenuLabel('POS & Sales', posSalesPendingCount)}
                     <i className={`fa ml-1 ${mobileOpenSection === 'sale' ? 'fa-angle-up' : 'fa-angle-down'}`} />
                   </button>
                   {mobileOpenSection === 'sale' && (
@@ -690,9 +535,9 @@ export const Header = ({ scriptsArr = [] }: HeaderProps) => {
                           {renderMenuLabel('Invoice Approvals', invoiceApprovalCount)}
                         </NavLink>
                       )}
-                      {(isAdminUser || isDistributor || isJeweler) && (
+                      {canViewMyInvoices && (
                         <NavLink to={invoicePageUrl} className="mobile-nav-link">
-                          My Invoices
+                          {renderMenuLabel('My Invoices', myPendingInvoiceCount)}
                         </NavLink>
                       )}
                     </div>

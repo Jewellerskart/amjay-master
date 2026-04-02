@@ -221,22 +221,32 @@ const getRateForComponent = (componentKey: string, config: CommissionConfig): nu
 
 export const calculateCommissionForSale = (args: { product: any; grossAmount: number; config: CommissionConfig }): CommissionCalculationResult => {
   const grossAmount = Math.max(0, round2(toFiniteNumber(args.grossAmount, 0)))
-  const baseAmounts = extractComponentBaseAmounts(args.product, grossAmount)
-  const orderedKeys: Array<'diamond' | 'labor' | 'other'> = ['diamond', 'labor', 'other']
+  const defaultRate = normalizeRate(args.config?.defaultRate, 0)
+  let breakdown: CommissionBreakdownItem[] = []
 
-  const breakdown: CommissionBreakdownItem[] = orderedKeys.map((componentKey) => {
-    const baseAmount = round2(Math.max(0, toFiniteNumber(baseAmounts[componentKey], 0)))
-    const rate = getRateForComponent(componentKey, args.config)
-    const deductionAmount = round2((baseAmount * rate) / 100)
-    return { componentKey, baseAmount, rate, deductionAmount }
-  })
+  if (defaultRate > 0) {
+    // Business rule: when default commission is set, apply it once on full gross amount.
+    const deductionAmount = round2((grossAmount * defaultRate) / 100)
+    breakdown = [{ componentKey: 'default', baseAmount: grossAmount, rate: defaultRate, deductionAmount }]
+  } else {
+    const baseAmounts = extractComponentBaseAmounts(args.product, grossAmount)
+    const orderedKeys: Array<'diamond' | 'labor' | 'other'> = ['diamond', 'labor', 'other']
+
+    breakdown = orderedKeys.map((componentKey) => {
+      const baseAmount = round2(Math.max(0, toFiniteNumber(baseAmounts[componentKey], 0)))
+      const rate = getRateForComponent(componentKey, { ...args.config, defaultRate: 0 })
+      const deductionAmount = round2((baseAmount * rate) / 100)
+      return { componentKey, baseAmount, rate, deductionAmount }
+    })
+  }
 
   const totalDeduction = round2(
     breakdown.reduce((sum, item) => {
       return sum + item.deductionAmount
     }, 0)
   )
-  const payableAmount = round2(Math.max(0, grossAmount - totalDeduction))
+  // Commission is an added charge; tax is calculated after this amount.
+  const payableAmount = round2(Math.max(0, grossAmount + totalDeduction))
   const effectiveRate = grossAmount > 0 ? round2((totalDeduction / grossAmount) * 100) : 0
 
   return { grossAmount, totalDeduction, payableAmount, effectiveRate, breakdown }

@@ -10,6 +10,8 @@ import {
   RateType,
   listMissingDiamondItemCodes,
   refreshProductsWithDiamondRates,
+  getDiamondItemCodeMapping,
+  saveDiamondItemCodeMapping,
 } from '../model/rate.service'
 
 const DIAMOND: RateType = 'diamond'
@@ -59,12 +61,18 @@ export const getDiamondRateMatchController = CatchError(async (req: Request, res
   const clarity = `${req.query?.clarity || ''}`.trim()
   const carat = Number(req.query?.carat)
   const shape = `${req.query?.shape || ''}`.trim()
+  const itemCode = `${req.query?.itemCode || ''}`.trim()
 
   if (Number.isNaN(carat)) {
     return res.status(400).json(new ApiResponse(400, { message: 'numeric carat query param is required' }, 'Invalid input'))
   }
 
-  const rateChart = await findDiamondRateMatch({ carat, clarity: clarity || undefined, shape: shape || undefined })
+  const rateChart = await findDiamondRateMatch({
+    carat,
+    clarity: clarity || undefined,
+    shape: shape || undefined,
+    itemCode: itemCode || undefined,
+  })
   if (!rateChart) {
     return res.status(404).json(new ApiResponse(404, { message: 'No matching rate found' }, 'Not found'))
   }
@@ -75,6 +83,16 @@ export const getDiamondRateMatchController = CatchError(async (req: Request, res
 export const listMissingDiamondRatesController = CatchError(async (_req: Request, res: Response) => {
   const rows = await listMissingDiamondItemCodes()
   return res.status(200).json(new ApiResponse(200, { data: rows }, 'Missing diamond rate mappings'))
+})
+
+export const getDiamondItemCodeMappingController = CatchError(async (_req: Request, res: Response) => {
+  const mapping = await getDiamondItemCodeMapping()
+  return res.status(200).json(new ApiResponse(200, mapping as any, 'Diamond item-code mapping fetched successfully'))
+})
+
+export const updateDiamondItemCodeMappingController = CatchError(async (req: Request, res: Response) => {
+  const mapping = await saveDiamondItemCodeMapping(req.body || {})
+  return res.status(200).json(new ApiResponse(200, mapping as any, 'Diamond item-code mapping updated successfully'))
 })
 
 export const createOtherRateController = CatchError(async (req: Request, res: Response) => {

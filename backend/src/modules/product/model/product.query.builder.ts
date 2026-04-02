@@ -113,8 +113,6 @@ export const buildSortCriteria = (sortBy: string = 'createdAt', sortDir: string 
       sort['weight.grossWeight'] = dir
       break
     case 'price':
-      sort['cost.totalCost'] = dir
-      break
     case 'livePrice':
       sort['finalPrice'] = dir
       break

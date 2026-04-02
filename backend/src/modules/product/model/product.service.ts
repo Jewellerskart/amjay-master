@@ -6,9 +6,15 @@ import { createInvoice } from '../../invoice/service/invoice.service'
 import { InvoiceStatus } from '../../invoice/type/invoice'
 import { UserModel } from '../../auth/model/auth.schema'
 import { createCommissionRecord } from '../../commission/service/commission.service'
-import { calculateCommissionForSale, getUserCommissionConfig } from '../../commission/service/commission-calculator'
 import { buildQuery, buildSortCriteria } from './product.query.builder'
-import { buildLivePricingStages, type MetalRates } from '../utils/pricing'
+import {
+  GST_PERCENT,
+  buildLivePricingStages,
+  calculateCommissionBreakdown,
+  calculateProductPricingFromRates,
+  withComponentCostSnapshot,
+  type MetalRates,
+} from '../../../utils/pricing'
 import { toCaseInsensitiveExactRegex } from '../../../utils/normalizer'
 
 // =====================================  CONSTANTS & HELPERS
@@ -70,17 +76,53 @@ const fetchLiveMetalRates = async (): Promise<MetalRates> => {
 export const getProductLivePricingById = async (productId: string, liveRates?: { GoldRate?: number; SilverRate?: number }, session?: ClientSession) => {
   const idValue = `${productId || ''}`.trim()
   if (!idValue || !mongoose.Types.ObjectId.isValid(idValue)) {
-    return { liveMetal: 0, finalPrice: Number.NaN }
+    return {
+      metalPrice: 0,
+      diamondAmount: 0,
+      laborAmount: 0,
+      totalCost: 0,
+      MRP: 0,
+      liveMetal: 0,
+      baseAmount: 0,
+      taxableAmount: 0,
+      taxAmount: 0,
+      taxPercent: GST_PERCENT,
+      finalPrice: Number.NaN,
+    }
   }
 
   const rows = await ProductModel.aggregate([
     { $match: { _id: new mongoose.Types.ObjectId(idValue) } },
     ...buildLivePricingStages(Number(liveRates?.GoldRate ?? 0), Number(liveRates?.SilverRate ?? 0)),
-    { $project: { _id: 0, liveMetal: { $ifNull: ['$liveMetal', 0] }, finalPrice: { $ifNull: ['$finalPrice', 0] } } },
+    {
+      $project: {
+        _id: 0,
+        metalPrice: { $ifNull: ['$metalPrice', 0] },
+        diamondAmount: { $ifNull: ['$diamondAmount', 0] },
+        laborAmount: { $ifNull: ['$laborAmount', 0] },
+        totalCost: { $ifNull: ['$totalCost', 0] },
+        MRP: { $ifNull: ['$MRP', 0] },
+        liveMetal: { $ifNull: ['$liveMetal', 0] },
+        baseAmount: { $ifNull: ['$baseAmount', 0] },
+        taxableAmount: { $ifNull: ['$taxableAmount', { $ifNull: ['$baseAmount', 0] }] },
+        taxAmount: { $ifNull: ['$taxAmount', 0] },
+        taxPercent: { $ifNull: ['$taxPercent', GST_PERCENT] },
+        finalPrice: { $ifNull: ['$finalPrice', 0] },
+      },
+    },
   ]).session(session || null)
 
   return {
+    metalPrice: toFiniteNumber(rows?.[0]?.metalPrice, 0),
+    diamondAmount: toFiniteNumber(rows?.[0]?.diamondAmount, 0),
+    laborAmount: toFiniteNumber(rows?.[0]?.laborAmount, 0),
+    totalCost: toFiniteNumber(rows?.[0]?.totalCost, 0),
+    MRP: toFiniteNumber(rows?.[0]?.MRP, 0),
     liveMetal: toFiniteNumber(rows?.[0]?.liveMetal, 0),
+    baseAmount: toFiniteNumber(rows?.[0]?.baseAmount, 0),
+    taxableAmount: toFiniteNumber(rows?.[0]?.taxableAmount, 0),
+    taxAmount: toFiniteNumber(rows?.[0]?.taxAmount, 0),
+    taxPercent: toFiniteNumber(rows?.[0]?.taxPercent, GST_PERCENT),
     finalPrice: toFiniteNumber(rows?.[0]?.finalPrice, Number.NaN),
   }
 }
@@ -92,7 +134,7 @@ const getQtyExpression = () => ({ $ifNull: ['$qty', { $ifNull: ['$product.qty', 
 // ============================================================================
 
 export const createProduct = async (payload: any) => {
-  return ProductModel.create(payload)
+  return ProductModel.create(withComponentCostSnapshot(payload))
 }
 export const createProductsBulk = async (items: any[]): Promise<{ inserted: number; modified: number; errors: any[] }> => {
   if (!items || items.length === 0) {
@@ -106,7 +148,7 @@ export const createProductsBulk = async (items: any[]): Promise<{ inserted: numb
         delete item._id
 
         const newId = new mongoose.Types.ObjectId()
-        const updateDoc: any = { ...item }
+        const updateDoc: any = withComponentCostSnapshot(item)
 
         delete updateDoc.rootProductId
 
@@ -218,8 +260,18 @@ const buildProductListQuery = (params: IServiceParams & { includePending?: boole
     includePending = false,
   } = params
 
+  const parsedMinPrice = Number.isFinite(Number(minPrice)) ? Number(minPrice) : undefined
+  const parsedMaxPrice = Number.isFinite(Number(maxPrice)) ? Number(maxPrice) : undefined
+  const normalizedMinPrice =
+    typeof parsedMinPrice === 'number' && typeof parsedMaxPrice === 'number' && parsedMinPrice > parsedMaxPrice ? parsedMaxPrice : parsedMinPrice
+  const normalizedMaxPrice =
+    typeof parsedMinPrice === 'number' && typeof parsedMaxPrice === 'number' && parsedMinPrice > parsedMaxPrice ? parsedMinPrice : parsedMaxPrice
+  const finalPriceRange: Record<string, number> = {}
+  if (typeof normalizedMinPrice === 'number') finalPriceRange.$gte = normalizedMinPrice
+  if (typeof normalizedMaxPrice === 'number') finalPriceRange.$lte = normalizedMaxPrice
+
   const queryParams = { search, usageType, group, subCategory, metals, baseQualities, diamonds, distributorId, holderRole: '', status }
-  const range = { startDate, endDate, minWeight, maxWeight, minPrice, maxPrice, currentHolderUserId: '' }
+  const range = { startDate, endDate, minWeight, maxWeight, minPrice: undefined, maxPrice: undefined, currentHolderUserId: '' }
   const query = buildQuery({ ...queryParams, ...range })
 
   if (!includeAssignedClones && !includePending && !query['usage.type']) {
@@ -228,7 +280,7 @@ const buildProductListQuery = (params: IServiceParams & { includePending?: boole
 
   const holderRoleKey = `${holderRole || ''}`.trim().toLowerCase()
   const holderUserIdKey = `${currentHolderUserId || ''}`.trim()
-  return { query, holderRoleKey, holderUserIdKey }
+  return { query, holderRoleKey, holderUserIdKey, finalPriceRange }
 }
 
 const buildAggregatedProductPipeline = (args: {
@@ -238,8 +290,9 @@ const buildAggregatedProductPipeline = (args: {
   silverRate: number
   holderRoleKey?: string
   holderUserIdKey?: string
+  finalPriceRange?: Record<string, number>
 }) => {
-  const { query, sort, goldRate, silverRate, holderRoleKey = '', holderUserIdKey = '' } = args
+  const { query, sort, goldRate, silverRate, holderRoleKey = '', holderUserIdKey = '', finalPriceRange = {} } = args
   const basePipeline: any[] = [
     { $match: query },
     {
@@ -282,6 +335,7 @@ const buildAggregatedProductPipeline = (args: {
     ...(holderUserIdKey ? [{ $match: { effectiveHolderUserId: holderUserIdKey } }] : []),
     ...(holderRoleKey ? [{ $match: { effectiveHolderRole: holderRoleKey } }] : []),
     ...buildLivePricingStages(goldRate, silverRate),
+    ...(Object.keys(finalPriceRange).length ? [{ $match: { finalPrice: finalPriceRange } }] : []),
     { $project: { latestAssignmentLog: 0, effectiveHolderRole: 0, effectiveHolderUserId: 0 } },
     { $sort: sort },
   ]
@@ -313,10 +367,18 @@ export const listProducts = async (
 
   const goldRate = Number(liveRates?.GoldRate ?? 0)
   const silverRate = Number(liveRates?.SilverRate ?? 0)
-  const { query, holderRoleKey, holderUserIdKey } = buildProductListQuery({ ...params, includeAssignedClones })
+  const { query, holderRoleKey, holderUserIdKey, finalPriceRange } = buildProductListQuery({ ...params, includeAssignedClones })
   const sort = buildSortCriteria(sortBy, sortDir)
 
-  const aggregatedPipeline = buildAggregatedProductPipeline({ query, sort, goldRate, silverRate, holderRoleKey, holderUserIdKey })
+  const aggregatedPipeline = buildAggregatedProductPipeline({
+    query,
+    sort,
+    goldRate,
+    silverRate,
+    holderRoleKey,
+    holderUserIdKey,
+    finalPriceRange,
+  })
   const skip = (page - 1) * limit
   const qtyExpr = { $convert: { input: getQtyExpression(), to: 'double', onError: 0, onNull: 0 } }
   const finalPriceExpr = { $convert: { input: '$finalPrice', to: 'double', onError: 0, onNull: 0 } }
@@ -482,6 +544,7 @@ export const listMarketplaceProducts = async (
           material: '$sampleProduct.material',
           weight: '$sampleProduct.weight',
           diamond: '$sampleProduct.diamond',
+          components: '$sampleProduct.components',
           uploadedBy: '$sampleProduct.uploadedBy',
           currentHolder: '$sampleProduct.currentHolder',
           product: {
@@ -572,6 +635,9 @@ export const cloneAndAssignProduct = async (
   const parent: any = await ProductModel.findById(productId).session(session || null)
   if (!parent) {
     throw new Error('Product not found')
+  }
+  if (`${parent?.status || ''}`.trim().toUpperCase() === 'SOLD') {
+    throw new Error('Sold product cannot be reassigned')
   }
 
   const assignedAt = new Date()
@@ -815,51 +881,52 @@ export const acceptAssignedProduct = async (
   let invoice: any = null
 
   if (args.mode === 'outright') {
-    const snapshotFinalPrice = Number(assigned?.finalPrice)
     const liveRates = await fetchLiveMetalRates()
-    const stagedPricing = await getProductLivePricingById(`${assigned?._id || ''}`, liveRates, session)
-    const stagedFinalPrice = Number(stagedPricing?.finalPrice)
+    const productSnapshot = typeof assigned?.toObject === 'function' ? assigned.toObject() : assigned
+    const computedPricing = calculateProductPricingFromRates(productSnapshot, liveRates)
     const explicitMrp = [Number(assigned?.saleAmount), Number(assigned?.cost?.saleAmount)].find(
       (value) => Number.isFinite(value) && value > 0
     )
-    const resolvedFinalPrice =
-      Number.isFinite(stagedFinalPrice) && stagedFinalPrice > 0
-        ? stagedFinalPrice
-        : Number.isFinite(snapshotFinalPrice) && snapshotFinalPrice > 0
-          ? snapshotFinalPrice
-          : typeof explicitMrp === 'number'
-            ? explicitMrp
-            : Number.NaN
+    const resolvedGrossAmount =
+      Number.isFinite(Number(computedPricing?.MRP)) && Number(computedPricing?.MRP) > 0
+        ? Number(computedPricing.MRP)
+        : typeof explicitMrp === 'number'
+          ? Number(explicitMrp)
+          : Number.NaN
     const holderId = `${args.performedByUserId || ''}`
     const holder = holderId
-      ? await UserModel.findById(holderId).select('email phone commissionRate commissionConfig').lean()
+      ? await UserModel.findById(holderId).select('email phone commissionConfig').lean()
       : null
 
     const userEmail = `${holder?.email || args.performedByEmail || ''}`.trim()
     const userPhone = `${holder?.phone || args.performedByPhone || ''}`.trim()
     const productId = `${assigned?._id || args.assignedProductId || ''}`.toString()
 
-    if (!holderId || !productId || !userEmail || !userPhone || !Number.isFinite(resolvedFinalPrice)) {
+    if (!holderId || !productId || !userEmail || !userPhone || !Number.isFinite(resolvedGrossAmount)) {
       const error: any = new Error('Unable to create invoice: missing product/contact/finalPrice details for outright acceptance')
       error.status_code = 400
       throw error
     }
 
-    const productSnapshot = typeof assigned?.toObject === 'function' ? assigned.toObject() : assigned
-    const commissionConfig = getUserCommissionConfig(holder as any)
-    const commissionCalculation = calculateCommissionForSale({
-      product: productSnapshot,
-      grossAmount: resolvedFinalPrice,
-      config: commissionConfig,
+    const commissionCalculation = calculateCommissionBreakdown({
+      mrp: resolvedGrossAmount,
+      diamondAmount: computedPricing.diamondAmount,
+      laborAmount: computedPricing.laborAmount,
+      user: holder as any,
     })
+    const taxAmount = Number(((resolvedGrossAmount * GST_PERCENT) / 100).toFixed(2))
+    const finalPrice = Number((resolvedGrossAmount + taxAmount).toFixed(2))
 
     const payload: any = {
       productId,
       userEmail,
       userPhone,
-      finalPrice: commissionCalculation.grossAmount,
-      amount: commissionCalculation.payableAmount,
-      commissionTotal: commissionCalculation.totalDeduction,
+      finalPrice,
+      grossAmount: resolvedGrossAmount,
+      amount: finalPrice,
+      taxAmount,
+      taxPercent: GST_PERCENT,
+      commissionTotal: commissionCalculation.commission,
       commissionBreakdown: commissionCalculation.breakdown,
       type: 'purchase',
       requestedByEmail: args.performedByEmail || args.performedByName || '',
@@ -871,8 +938,8 @@ export const acceptAssignedProduct = async (
       {
         userId: holderId,
         productId,
-        commissionRate: commissionCalculation.effectiveRate,
-        commissionAmount: commissionCalculation.totalDeduction,
+        commissionRate: commissionCalculation.commissionRate,
+        commissionAmount: commissionCalculation.commission,
         invoiceId: `${invoice?._id || ''}`,
         breakdown: commissionCalculation.breakdown.map((item) => ({
           componentKey: item.componentKey,

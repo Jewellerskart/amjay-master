@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import QrSearchInput from '@common/QrSearchInput';
 
 type FrontendDocEntry = {
   id: string;
@@ -80,7 +81,17 @@ export const FrontendDocs = () => {
               </div>
               <div className="card-body">
                 <div className="form-group">
-                  <input className="form-control" placeholder="Search docs..." value={search} onChange={(event) => setSearch(event.target.value)} />
+                  <QrSearchInput
+                    value={search}
+                    onChange={setSearch}
+                    onClear={() => setSearch('')}
+                    wrapperClassName="w-100"
+                    placeholder="Search docs..."
+                    ariaLabel="Search docs"
+                    clearButtonAriaLabel="Reset docs search"
+                    scanButtonAriaLabel="Scan docs QR"
+                    showSearchButton={false}
+                  />
                 </div>
                 <div className="list-group">
                   {filteredDocs.map((doc) => (

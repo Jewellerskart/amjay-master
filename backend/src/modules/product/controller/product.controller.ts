@@ -7,7 +7,6 @@ import {
   deleteProductsByIds,
   getProductById,
   getProductByIdentifier,
-  getProductLivePricingById,
   listProducts,
   listMarketplaceProducts,
   rejectAssignedProduct,
@@ -15,11 +14,19 @@ import {
   updateProductById,
   GetProductFilters,
 } from '../model/product.service'
+import { getDiamondItemCodeMapping } from '../model/rate.service'
 import { sanitizeProductPayload } from '../model/product.sanitize'
 import { UserModel } from '../../auth/model/auth.schema'
 import { ProductModel } from '../model/product.schema'
 import { MetalLiveRate, normalizeRole, processBulkImport } from './product.helper'
-import { buildLivePricingStages, type MetalRates } from '../utils/pricing'
+import {
+  GST_PERCENT,
+  calculateProductPricingFromRates,
+  type MetalRates,
+  withComponentCostSnapshot,
+  type ProductPricingResult,
+} from '../../../utils/pricing'
+import { getClarityFromItemCode, getShapeFromItemCode } from '../utils/diamondItemCode'
 import XLSX from 'xlsx'
 
 const canCreateProduct = (role?: string) => ['super-admin', 'admin', 'distributor', 'jeweler'].includes(`${role || ''}`.trim().toLowerCase())
@@ -33,6 +40,18 @@ const sanitizeProductByRole = (product: any, role?: string) => {
   if (role === 'jeweler') {
     delete safe.currentHolder
     delete safe.assignmentLogs
+    delete safe.cost
+    if (safe?.diamond) delete safe.diamond.costAmount
+    if (safe?.colorDiamond) delete safe.colorDiamond.costAmount
+    if (safe?.stone) delete safe.stone.costAmount
+    if (safe?.cubicZirconia) delete safe.cubicZirconia.costAmount
+    if (Array.isArray(safe?.components)) {
+      safe.components = safe.components.map((component: any) => {
+        const next = { ...component }
+        delete next.costAmt
+        return next
+      })
+    }
     if (safe?.uploadedBy) {
       delete safe.uploadedBy.userId
       delete safe.uploadedBy.businessName
@@ -47,34 +66,108 @@ const sanitizeProductByRole = (product: any, role?: string) => {
   return safe
 }
 
+const enrichDiamondSpecsFromItemCode = (
+  product: any,
+  mapping?: { clarityMap?: Record<string, string>; shapeMap?: Record<string, string> } | null
+) => {
+  const components = Array.isArray(product?.components) ? product.components : []
+  if (!components.length) return product
+
+  const clarityMap = mapping?.clarityMap || {}
+  const shapeMap = mapping?.shapeMap || {}
+  const nextComponents = components.map((component: any) => {
+    const typeKey = `${component?.type || ''}`.trim().toLowerCase()
+    if (typeKey !== 'diamond') return component
+
+    const clarity = getClarityFromItemCode(component?.itemCode, clarityMap)
+    const shape = getShapeFromItemCode(component?.itemCode, shapeMap)
+    return {
+      ...component,
+      clarity: clarity || component?.clarity || '',
+      shape: shape || component?.shape || '',
+    }
+  })
+
+  return { ...product, components: nextComponents }
+}
+
 const defaultMetalRates: MetalRates = { GoldRate: 0, SilverRate: 0 }
 const toFiniteNumber = (value: unknown, fallback = 0) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
-const qtyExpr = { $convert: { input: { $ifNull: ['$qty', { $ifNull: ['$product.qty', 0] }] }, to: 'double', onError: 0, onNull: 0 } }
-const finalPriceExpr = { $convert: { input: { $ifNull: ['$finalPrice', 0] }, to: 'double', onError: 0, onNull: 0 } }
+const round2 = (value: number) => Number(value.toFixed(2))
 
-const getTotalAmountWithGst = async (basePipeline: any[], liveRates: MetalRates) => {
-  const goldRate = Number(liveRates?.GoldRate || 0)
-  const silverRate = Number(liveRates?.SilverRate || 0)
-  const rows = await ProductModel.aggregate([
-    ...basePipeline,
-    ...buildLivePricingStages(goldRate, silverRate),
-    { $group: { _id: null, totalAmount: { $sum: { $multiply: [qtyExpr, finalPriceExpr] } } } },
-  ])
-  return Number(rows?.[0]?.totalAmount || 0)
+const getProductQuantity = (product: any) => {
+  const quantity = toFiniteNumber(product?.qty, toFiniteNumber(product?.product?.qty, 0))
+  return Math.max(0, quantity)
 }
 
-const getAssignProductAmount = async (product: any, liveRates: MetalRates) => {
+type ProductAmountSummary = {
+  quantity: number
+  grossAmount: number
+  commissionAmount: number
+  taxableAmount: number
+  taxAmount: number
+  totalAmount: number
+}
+
+const emptyAmountSummary = (): ProductAmountSummary => ({
+  quantity: 0,
+  grossAmount: 0,
+  commissionAmount: 0,
+  taxableAmount: 0,
+  taxAmount: 0,
+  totalAmount: 0,
+})
+
+const mergeAmountSummaries = (items: ProductAmountSummary[]) => {
+  return items.reduce(
+    (acc, item) => ({
+      quantity: acc.quantity + item.quantity,
+      grossAmount: round2(acc.grossAmount + item.grossAmount),
+      commissionAmount: round2(acc.commissionAmount + item.commissionAmount),
+      taxableAmount: round2(acc.taxableAmount + item.taxableAmount),
+      taxAmount: round2(acc.taxAmount + item.taxAmount),
+      totalAmount: round2(acc.totalAmount + item.totalAmount),
+    }),
+    emptyAmountSummary()
+  )
+}
+
+const getPricingForProduct = (product: any, liveRates: MetalRates, pricingUser?: any): ProductPricingResult => {
+  return calculateProductPricingFromRates(product, liveRates, pricingUser)
+}
+
+const getAmountSummaryForProduct = (product: any, liveRates: MetalRates, pricingUser?: any): ProductAmountSummary => {
+  const quantity = getProductQuantity(product)
+  if (quantity <= 0) return emptyAmountSummary()
+
+  const pricing = getPricingForProduct(product, liveRates, pricingUser)
+  const grossAmount = Math.max(0, toFiniteNumber(pricing.MRP, 0))
+  const commissionAmount = Math.max(0, toFiniteNumber(pricing.commission, 0))
+  const finalPrice = Math.max(0, toFiniteNumber(pricing.finalPrice, 0))
+  const taxAmount = Math.max(0, round2(finalPrice - grossAmount))
+
+  return {
+    quantity,
+    grossAmount: round2(grossAmount * quantity),
+    commissionAmount: round2(commissionAmount * quantity),
+    taxableAmount: round2(grossAmount * quantity),
+    taxAmount: round2(taxAmount * quantity),
+    totalAmount: round2(finalPrice * quantity),
+  }
+}
+
+const getAssignProductAmount = async (product: any, liveRates: MetalRates, pricingUser?: any) => {
   const idValue = `${product?._id || ''}`.trim()
-  if (!idValue || !mongoose.Types.ObjectId.isValid(idValue)) return 0
-  return getTotalAmountWithGst([{ $match: { _id: new mongoose.Types.ObjectId(idValue) } }], liveRates)
+  if (!idValue || !mongoose.Types.ObjectId.isValid(idValue)) return emptyAmountSummary()
+  return getAmountSummaryForProduct(product, liveRates, pricingUser)
 }
 
-const getJewelerHeldProductAmount = async (jewelerId: string, liveRates: MetalRates) => {
-  const basePipeline = [
+const getJewelerHeldProductAmount = async (jewelerId: string, liveRates: MetalRates, pricingUser?: any) => {
+  const rows = await ProductModel.aggregate([
     { $match: { status: { $ne: 'SOLD' } } },
     { $addFields: { latestAssignmentLog: { $arrayElemAt: [{ $ifNull: ['$assignmentLogs', []] }, -1] } } },
     {
@@ -96,18 +189,48 @@ const getJewelerHeldProductAmount = async (jewelerId: string, liveRates: MetalRa
       },
     },
     { $match: { effectiveHolderUserId: jewelerId } },
-  ]
+  ])
 
-  return getTotalAmountWithGst(basePipeline, liveRates)
+  if (!rows.length) return emptyAmountSummary()
+  const summaries = rows.map((row: any) => getAmountSummaryForProduct(row, liveRates, pricingUser))
+  return mergeAmountSummaries(summaries)
 }
 
 const buildAssignPreview = async (product: any, jeweler: any) => {
+  const productStatus = `${product?.status || ''}`.trim().toUpperCase()
+  if (productStatus === 'SOLD') {
+    return {
+      creditLimit: Math.max(0, toFiniteNumber(jeweler?.creditLimit, 0)),
+      walletBalance: Math.max(0, toFiniteNumber(jeweler?.walletBalance, 0)),
+      currentProductAmount: 0,
+      currentGrossAmount: 0,
+      currentCommissionAmount: 0,
+      currentTaxAmount: 0,
+      assignProductAmount: 0,
+      assignGrossAmount: 0,
+      assignCommissionAmount: 0,
+      assignTaxAmount: 0,
+      projectedProductAmount: 0,
+      projectedGrossAmount: 0,
+      projectedCommissionAmount: 0,
+      projectedTaxAmount: 0,
+      gstPercent: GST_PERCENT,
+      thresholdPercent: 75,
+      thresholdAmount: 0,
+      utilizationPercent: 0,
+      canAssignForLimit: false,
+      reason: 'Sold product cannot be reassigned',
+    }
+  }
+
   const liveRates = await getLiveRatesSafe()
   const creditLimit = Math.max(0, toFiniteNumber(jeweler?.creditLimit, 0))
   const walletBalance = Math.max(0, toFiniteNumber(jeweler?.walletBalance, 0))
-  const currentProductAmount = await getJewelerHeldProductAmount(`${jeweler?._id || ''}`, liveRates)
-  const assignProductAmount = await getAssignProductAmount(product, liveRates)
-  const projectedProductAmount = Number((currentProductAmount + assignProductAmount).toFixed(2))
+  const currentAmountSummary = await getJewelerHeldProductAmount(`${jeweler?._id || ''}`, liveRates, jeweler)
+  const assignAmountSummary = await getAssignProductAmount(product, liveRates, jeweler)
+  const currentProductAmount = currentAmountSummary.totalAmount
+  const assignProductAmount = assignAmountSummary.totalAmount
+  const projectedProductAmount = round2(currentProductAmount + assignProductAmount)
   const thresholdAmount = Number((creditLimit * 0.75).toFixed(2))
   const utilizationPercent = creditLimit > 0 ? Number(((projectedProductAmount / creditLimit) * 100).toFixed(2)) : 0
   const canAssignForLimit = creditLimit > 0 && projectedProductAmount <= thresholdAmount
@@ -120,10 +243,19 @@ const buildAssignPreview = async (product: any, jeweler: any) => {
   return {
     creditLimit,
     walletBalance,
-    currentProductAmount: Number(currentProductAmount.toFixed(2)),
+    currentProductAmount: round2(currentProductAmount),
+    currentGrossAmount: round2(currentAmountSummary.grossAmount),
+    currentCommissionAmount: round2(currentAmountSummary.commissionAmount),
+    currentTaxAmount: round2(currentAmountSummary.taxAmount),
     assignProductAmount,
+    assignGrossAmount: round2(assignAmountSummary.grossAmount),
+    assignCommissionAmount: round2(assignAmountSummary.commissionAmount),
+    assignTaxAmount: round2(assignAmountSummary.taxAmount),
     projectedProductAmount,
-    gstPercent: 3,
+    projectedGrossAmount: round2(currentAmountSummary.grossAmount + assignAmountSummary.grossAmount),
+    projectedCommissionAmount: round2(currentAmountSummary.commissionAmount + assignAmountSummary.commissionAmount),
+    projectedTaxAmount: round2(currentAmountSummary.taxAmount + assignAmountSummary.taxAmount),
+    gstPercent: GST_PERCENT,
     thresholdPercent: 75,
     thresholdAmount,
     utilizationPercent,
@@ -153,9 +285,11 @@ export const createProductController = CatchError(async (req: Request & { user?:
   const name = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'User'
   const businessName = `${user?.businessName || ''}`.trim()
   const role = normalizeRole(user?.role)
+  const sanitizedPayload = sanitizeProductPayload(req.body)
+  const payloadWithCostSnapshot = withComponentCostSnapshot(sanitizedPayload)
 
-  const created = await createProduct({
-    ...sanitizeProductPayload(req.body),
+  await createProduct({
+    ...payloadWithCostSnapshot,
     uploadedBy: { userId: user?._id, role, name, businessName, at: new Date() },
     currentHolder: {
       userId: user?._id,
@@ -233,12 +367,26 @@ export const getProductByIdController = CatchError(async (req: Request & { user?
   }
 
   const rates = await getLiveRatesSafe()
-  const safeProduct = sanitizeProductByRole(product, req.user?.role)
-  const stagedPricing = await getProductLivePricingById(`${safeProduct?._id || ''}`, rates)
+  const rawProduct = typeof product?.toObject === 'function' ? product.toObject() : product
+  const diamondItemCodeMapping = await getDiamondItemCodeMapping().catch(() => null)
+  const safeProduct = enrichDiamondSpecsFromItemCode(sanitizeProductByRole(product, req.user?.role), diamondItemCodeMapping)
+  const pricingUser = userRole === 'jeweler' && userId ? await UserModel.findById(userId).select('commissionConfig').lean() : null
+  const pricing = getPricingForProduct(rawProduct, rates, pricingUser)
+
   const productWithLivePrice = {
     ...safeProduct,
-    liveMetal: stagedPricing.liveMetal,
-    finalPrice: stagedPricing.finalPrice,
+    liveMetal: pricing.metalPrice,
+    metalPrice: pricing.metalPrice,
+    diamondAmount: pricing.diamondAmount,
+    laborAmount: pricing.laborAmount,
+    totalCost: pricing.totalCost,
+    MRP: pricing.MRP,
+    baseAmount: pricing.MRP,
+    taxableAmount: pricing.MRP,
+    commissionTotal: pricing.commission,
+    taxAmount: pricing.taxAmount,
+    taxPercent: pricing.taxPercent,
+    finalPrice: pricing.finalPrice,
   }
 
   return res.status(200).json(new ApiResponse(200, { product: productWithLivePrice }, 'Product fetched successfully'))
@@ -248,7 +396,30 @@ export const listProductsController = CatchError(async (req: Request & { user?: 
   const rates = await getLiveRatesSafe()
   const data = await listProducts({ ...(req.body || {}) }, rates)
   const products = Array.isArray((data as any)?.data) ? (data as any).data : []
-  const safeProducts = products.map((product: any) => sanitizeProductByRole(product, req.user?.role))
+  const diamondItemCodeMapping = await getDiamondItemCodeMapping().catch(() => null)
+  const userRole = `${req.user?.role || ''}`.trim().toLowerCase()
+  const userId = `${req.user?._id || ''}`.trim()
+  const pricingUser = userRole === 'jeweler' && userId ? await UserModel.findById(userId).select('commissionConfig').lean() : null
+  const safeProducts = products.map((product: any) => {
+    const safeProduct = sanitizeProductByRole(product, req.user?.role)
+    const pricing = getPricingForProduct(product, rates, pricingUser)
+
+    return {
+      ...enrichDiamondSpecsFromItemCode(safeProduct, diamondItemCodeMapping),
+      liveMetal: pricing.metalPrice,
+      metalPrice: pricing.metalPrice,
+      diamondAmount: pricing.diamondAmount,
+      laborAmount: pricing.laborAmount,
+      totalCost: pricing.totalCost,
+      MRP: pricing.MRP,
+      baseAmount: pricing.MRP,
+      taxableAmount: pricing.MRP,
+      commissionTotal: pricing.commission,
+      taxAmount: pricing.taxAmount,
+      taxPercent: pricing.taxPercent,
+      finalPrice: pricing.finalPrice,
+    }
+  })
 
   const { liveRates = rates, ...rest } = (data || {}) as any
   return res.status(200).json(new ApiResponse(200, { ...rest, data: safeProducts, liveRates }, 'successfully'))
@@ -258,7 +429,10 @@ export const listMarketplaceProductsController = CatchError(async (req: Request 
   const rates = await getLiveRatesSafe()
   const data = await listMarketplaceProducts({ ...(req.body || {}) }, rates)
   const groups = Array.isArray((data as any)?.data) ? (data as any).data : []
-  const safeGroups = groups.map((group: any) => sanitizeProductByRole(group, req.user?.role))
+  const diamondItemCodeMapping = await getDiamondItemCodeMapping().catch(() => null)
+  const safeGroups = groups.map((group: any) =>
+    enrichDiamondSpecsFromItemCode(sanitizeProductByRole(group, req.user?.role), diamondItemCodeMapping)
+  )
 
   const { liveRates = rates, ...rest } = (data || {}) as any
   return res.status(200).json(new ApiResponse(200, { ...rest, data: safeGroups, liveRates }, 'successfully'))
@@ -297,12 +471,22 @@ export const updateProductController = CatchError(async (req: Request & { user?:
     return res.status(404).json(new ApiResponse(404, { message: 'Product not found' }, 'Not found'))
   }
   const rates = await getLiveRatesSafe()
-  const stagedPricing = await getProductLivePricingById(`${updated?._id || ''}`, rates)
   const baseProduct = typeof updated?.toObject === 'function' ? updated.toObject() : updated
+  const pricing = getPricingForProduct(baseProduct, rates)
   const productWithLivePrice = {
     ...baseProduct,
-    liveMetal: stagedPricing.liveMetal,
-    finalPrice: stagedPricing.finalPrice,
+    liveMetal: pricing.metalPrice,
+    metalPrice: pricing.metalPrice,
+    diamondAmount: pricing.diamondAmount,
+    laborAmount: pricing.laborAmount,
+    totalCost: pricing.totalCost,
+    MRP: pricing.MRP,
+    baseAmount: pricing.MRP,
+    taxableAmount: pricing.MRP,
+    commissionTotal: pricing.commission,
+    taxAmount: pricing.taxAmount,
+    taxPercent: pricing.taxPercent,
+    finalPrice: pricing.finalPrice,
   }
 
   return res.status(200).json(new ApiResponse(200, { product: productWithLivePrice }, 'Product updated successfully'))
@@ -339,8 +523,11 @@ export const assignProductToJewelerController = CatchError(async (req: Request &
   if (!sourceProduct) {
     return res.status(404).json(new ApiResponse(404, { message: 'Product not found' }, 'Not found'))
   }
+  if (`${sourceProduct?.status || ''}`.trim().toUpperCase() === 'SOLD') {
+    return res.status(400).json(new ApiResponse(400, { message: 'Sold product cannot be reassigned' }, 'Invalid input'))
+  }
 
-  const select = '_id firstName lastName email businessName role creditLimit walletBalance'
+  const select = '_id firstName lastName email businessName role creditLimit walletBalance commissionRate commissionConfig'
   const jeweler: any = await UserModel.findOne({ _id: toUserId, role: 'jeweler' }).select(select).lean()
   if (!jeweler?._id) {
     return res.status(400).json(new ApiResponse(400, { message: 'Assignee must be a jeweler user' }, 'Invalid input'))
@@ -398,9 +585,12 @@ export const previewAssignProductController = CatchError(async (req: Request & {
   if (!product) {
     return res.status(404).json(new ApiResponse(404, { message: 'Product not found' }, 'Not found'))
   }
+  if (`${product?.status || ''}`.trim().toUpperCase() === 'SOLD') {
+    return res.status(400).json(new ApiResponse(400, { message: 'Sold product cannot be reassigned' }, 'Invalid input'))
+  }
 
   const jeweler: any = await UserModel.findOne({ _id: jewelerId, role: 'jeweler' })
-    .select('_id firstName lastName email businessName creditLimit walletBalance')
+    .select('_id firstName lastName email businessName creditLimit walletBalance commissionRate commissionConfig')
     .lean()
   if (!jeweler?._id) {
     return res.status(400).json(new ApiResponse(400, { message: 'Assignee must be a jeweler user' }, 'Invalid input'))

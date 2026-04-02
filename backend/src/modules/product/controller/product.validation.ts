@@ -182,6 +182,17 @@ export const listDiamondRateSchema = z.object({
   isActive: z.coerce.boolean().optional(),
 })
 
+const stringMapSchema = z.record(z.string(), z.string())
+
+export const updateDiamondItemCodeMappingSchema = z
+  .object({
+    clarityMap: stringMapSchema.optional(),
+    shapeMap: stringMapSchema.optional(),
+  })
+  .refine((value) => !!value.clarityMap || !!value.shapeMap, {
+    message: 'At least one of clarityMap or shapeMap is required',
+  })
+
 export const createOtherRateSchema = z.object({
   name: z.string().min(1),
   category: z.string().optional(),

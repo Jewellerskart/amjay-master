@@ -1,6 +1,15 @@
 import { DiamondRateChartModel } from './diamondRateChart.schema'
 import { OtherRateChartModel } from './otherRateChart.schema'
 import { ProductModel } from './product.schema'
+import { DiamondItemCodeMappingModel } from './diamondItemCodeMapping.schema'
+import {
+  DEFAULT_CLARITY_MAP,
+  DEFAULT_SHAPE_MAP,
+  getClarityFromItemCode,
+  getShapeFromItemCode,
+  toNormalizedClarityMap,
+  toNormalizedShapeMap,
+} from '../utils/diamondItemCode'
 
 export type RateType = 'diamond' | 'other'
 
@@ -16,6 +25,62 @@ type PreparedDiamondRate = {
   shape: string
   ratePerCarat: number
   range: DiamondRateRange
+}
+
+const ITEM_CODE_MAPPING_KEY = 'default'
+const ITEM_CODE_MAPPING_CACHE_TTL_MS = 60_000
+
+let itemCodeMappingCache: {
+  clarityMap: Record<string, string>
+  shapeMap: Record<string, string>
+  expiresAt: number
+} = {
+  clarityMap: { ...DEFAULT_CLARITY_MAP },
+  shapeMap: { ...DEFAULT_SHAPE_MAP },
+  expiresAt: 0,
+}
+
+const loadDiamondItemCodeMapping = async () => {
+  const now = Date.now()
+  if (itemCodeMappingCache.expiresAt > now) {
+    return {
+      clarityMap: { ...itemCodeMappingCache.clarityMap },
+      shapeMap: { ...itemCodeMappingCache.shapeMap },
+    }
+  }
+
+  const doc = await DiamondItemCodeMappingModel.findOne({ key: ITEM_CODE_MAPPING_KEY }).lean()
+  const clarityMap = toNormalizedClarityMap(doc?.clarityMap || DEFAULT_CLARITY_MAP)
+  const shapeMap = toNormalizedShapeMap(doc?.shapeMap || DEFAULT_SHAPE_MAP)
+  itemCodeMappingCache = {
+    clarityMap: { ...clarityMap },
+    shapeMap: { ...shapeMap },
+    expiresAt: now + ITEM_CODE_MAPPING_CACHE_TTL_MS,
+  }
+
+  return { clarityMap, shapeMap }
+}
+
+export const getDiamondItemCodeMapping = async () => {
+  return loadDiamondItemCodeMapping()
+}
+
+export const saveDiamondItemCodeMapping = async (payload: { clarityMap?: Record<string, string>; shapeMap?: Record<string, string> }) => {
+  const nextClarityMap = toNormalizedClarityMap(payload?.clarityMap || DEFAULT_CLARITY_MAP)
+  const nextShapeMap = toNormalizedShapeMap(payload?.shapeMap || DEFAULT_SHAPE_MAP)
+  await DiamondItemCodeMappingModel.findOneAndUpdate(
+    { key: ITEM_CODE_MAPPING_KEY },
+    { $set: { key: ITEM_CODE_MAPPING_KEY, clarityMap: nextClarityMap, shapeMap: nextShapeMap } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  )
+
+  itemCodeMappingCache = {
+    clarityMap: { ...nextClarityMap },
+    shapeMap: { ...nextShapeMap },
+    expiresAt: Date.now() + ITEM_CODE_MAPPING_CACHE_TTL_MS,
+  }
+
+  return { clarityMap: nextClarityMap, shapeMap: nextShapeMap }
 }
 
 export const createRate = async (type: RateType, payload: any) => getRateModel(type).create(payload)
@@ -66,7 +131,8 @@ const parseSizeRange = (size?: string): { from: number; to: number } | null => {
   return { from, to }
 }
 
-export const findDiamondRateMatch = async (params: { carat: number; clarity?: string; shape?: string }) => {
+export const findDiamondRateMatch = async (params: { carat: number; clarity?: string; shape?: string; itemCode?: string }) => {
+  const itemCodeMapping = await loadDiamondItemCodeMapping()
   const clarity = params.clarity ? params.clarity.trim().toUpperCase() : ''
   const shape = params.shape ? params.shape.trim().toUpperCase() : ''
   const target = Number(params.carat)
@@ -76,44 +142,36 @@ export const findDiamondRateMatch = async (params: { carat: number; clarity?: st
   }
 
   const all = await DiamondRateChartModel.find({ isActive: true }).lean()
-  const match = all.find((item: any) => {
-    const range = parseSizeRange(item.size)
+  const inRange = all
+    .map((item: any) => {
+      const range = parseSizeRange(item.size)
+      if (!range) return null
+      return {
+        item,
+        clarity: `${item?.clarity || ''}`.trim().toUpperCase(),
+        shape: `${item?.shape || ''}`.trim().toUpperCase(),
+        inRange: target >= range.from && target <= range.to,
+      }
+    })
+    .filter(Boolean)
+    .filter((row: any) => row.inRange)
 
-    if (!range) {
-      return false
-    }
+  if (!inRange.length) return null
 
-    const inRange = target >= range.from && target <= range.to
-    const clarityOk = clarity ? item.clarity === clarity : true
-    const shapeOk = shape ? (item.shape || '').toUpperCase() === shape : true
+  const derivedClarity = clarity || getClarityFromItemCode(params.itemCode, itemCodeMapping.clarityMap)
+  const derivedShape = shape || getShapeFromItemCode(params.itemCode, itemCodeMapping.shapeMap)
 
-    const matches = inRange && clarityOk && shapeOk
+  const strictMatch =
+    inRange.find((row: any) => {
+      const clarityOk = derivedClarity ? row.clarity === derivedClarity : true
+      const shapeOk = derivedShape ? row.shape === derivedShape : true
+      return clarityOk && shapeOk
+    }) ||
+    inRange.find((row: any) => (derivedClarity ? row.clarity === derivedClarity : false)) ||
+    inRange.find((row: any) => (derivedShape ? row.shape === derivedShape : false)) ||
+    null
 
-    return matches
-  })
-  return match || null
-}
-
-const getShapeFromItemCode = (code?: string) => {
-  const shapeFromItem: Record<string, string> = { RND: 'ROUND', PEA: 'PEAR', OV: 'OVAL', EM: 'EMERALD', PRN: 'PRINCESS' }
-  const val = (code || '').toUpperCase()
-  const p3 = val.slice(0, 3)
-  if (shapeFromItem[p3]) return shapeFromItem[p3]
-  const p2 = val.slice(0, 2)
-  if (shapeFromItem[p2]) return shapeFromItem[p2]
-  return ''
-}
-
-const getClarityFromItemCode = (code?: string) => {
-  const clarityMap: Record<string, string> = { 'VVS-VS': 'VVS-VS', 'VS-SI': 'VS-SI', VVS: 'VVS', VS: 'VS', SI: 'SI' }
-  const val = (code || '').toUpperCase()
-
-  const len = val.length
-  if (len >= 6) {
-    const s5 = val.slice(len - 6)
-    if (clarityMap[s5]) return clarityMap[s5]
-  }
-  return ''
+  return strictMatch?.item || inRange[0]?.item || null
 }
 
 const prepareDiamondRates = async (): Promise<PreparedDiamondRate[]> => {
@@ -150,7 +208,11 @@ const matchPreparedDiamondRate = (rates: PreparedDiamondRate[], perStone: number
   )
 }
 
-const recalculateProductWithRates = (product: any, rates: PreparedDiamondRate[]) => {
+const recalculateProductWithRates = (
+  product: any,
+  rates: PreparedDiamondRate[],
+  itemCodeMapping: { clarityMap: Record<string, string>; shapeMap: Record<string, string> }
+) => {
   const components: any[] = Array.isArray(product?.components) ? product.components : []
   if (!components.length) return { changed: false, total: Number(product?.cost?.totalCost ?? 0) }
 
@@ -183,8 +245,8 @@ const recalculateProductWithRates = (product: any, rates: PreparedDiamondRate[])
 
       if (weight > 0 && pieces > 0) {
         const perStone = weight / pieces
-        const clarity = getClarityFromItemCode(comp?.itemCode) || `${comp?.clarity || ''}`.trim().toUpperCase()
-        const shape = getShapeFromItemCode(comp?.itemCode) || `${comp?.shape || ''}`.trim().toUpperCase()
+        const clarity = getClarityFromItemCode(comp?.itemCode, itemCodeMapping.clarityMap)
+        const shape = getShapeFromItemCode(comp?.itemCode, itemCodeMapping.shapeMap)
         const match = matchPreparedDiamondRate(rates, perStone, clarity, shape)
 
         if (match) {
@@ -192,10 +254,6 @@ const recalculateProductWithRates = (product: any, rates: PreparedDiamondRate[])
           if (Number.isFinite(nextAmount)) {
             if (nextAmount !== baseAmount) changed = true
             comp.amount = nextAmount
-            if (clarity && comp.clarity !== clarity) changed = true
-            if (shape && comp.shape !== shape) changed = true
-            if (clarity) comp.clarity = clarity
-            if (shape) comp.shape = shape
             totalAmount += nextAmount
             continue
           }
@@ -219,13 +277,14 @@ const recalculateProductWithRates = (product: any, rates: PreparedDiamondRate[])
 
 export const refreshProductsWithDiamondRates = async () => {
   const rates = await prepareDiamondRates()
+  const itemCodeMapping = await loadDiamondItemCodeMapping()
   const cursor = ProductModel.find({ 'components.type': { $regex: /diamond/i } }).cursor({ batchSize: 100 })
 
   let processed = 0
   let updated = 0
 
   for await (const product of cursor as any) {
-    const { changed } = recalculateProductWithRates(product, rates)
+    const { changed } = recalculateProductWithRates(product, rates, itemCodeMapping)
     processed += 1
     if (!changed) continue
 

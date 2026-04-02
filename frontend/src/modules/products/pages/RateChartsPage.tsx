@@ -11,6 +11,8 @@ import {
   useUpdateOtherRateChartMutation,
   useDeleteOtherRateChartMutation,
   useListMissingDiamondRatesQuery,
+  useGetDiamondItemCodeMappingQuery,
+  useUpdateDiamondItemCodeMappingMutation,
 } from '@api/apiHooks/product';
 
 const emptyDiamond = {
@@ -35,6 +37,31 @@ const emptyOther = {
   isActive: true,
 };
 
+const mapToLines = (input: Record<string, string> | undefined) => {
+  if (!input || typeof input !== 'object') return '';
+  return Object.entries(input)
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+};
+
+const linesToMap = (value: string) => {
+  const rows = `${value || ''}`
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const result: Record<string, string> = {};
+  rows.forEach((row) => {
+    const splitIndex = row.indexOf('=');
+    if (splitIndex <= 0) return;
+    const key = row.slice(0, splitIndex).trim().toUpperCase();
+    const val = row.slice(splitIndex + 1).trim().toUpperCase();
+    if (!key || !val) return;
+    result[key] = val;
+  });
+  return result;
+};
+
 export const RateChartsPage = () => {
   const [activeTab, setActiveTab] = useState<'diamond' | 'other'>('diamond');
 
@@ -42,6 +69,10 @@ export const RateChartsPage = () => {
   const [diamondEditId, setDiamondEditId] = useState<string | null>(null);
   const [diamondRates, setDiamondRates] = useState<any[]>([]);
   const { data: missingDiamondData, isFetching: loadingMissing } = useListMissingDiamondRatesQuery();
+  const { data: itemCodeMappingData, isFetching: loadingItemCodeMapping } = useGetDiamondItemCodeMappingQuery();
+  const [updateDiamondItemCodeMapping, { isLoading: savingItemCodeMapping }] = useUpdateDiamondItemCodeMappingMutation();
+  const [clarityMapInput, setClarityMapInput] = useState('');
+  const [shapeMapInput, setShapeMapInput] = useState('');
 
   const [otherForm, setOtherForm] = useState<any>(emptyOther);
   const [otherEditId, setOtherEditId] = useState<string | null>(null);
@@ -80,6 +111,13 @@ export const RateChartsPage = () => {
     void loadOther();
   }, []);
 
+  useEffect(() => {
+    const clarityMap = (itemCodeMappingData?.data?.clarityMap || {}) as Record<string, string>;
+    const shapeMap = (itemCodeMappingData?.data?.shapeMap || {}) as Record<string, string>;
+    setClarityMapInput(mapToLines(clarityMap));
+    setShapeMapInput(mapToLines(shapeMap));
+  }, [itemCodeMappingData]);
+
   const onSubmitDiamond = async (e: FormEvent) => {
     e.preventDefault();
     try {
@@ -95,6 +133,18 @@ export const RateChartsPage = () => {
       await loadDiamond();
     } catch (error: any) {
       toast.error(error?.data?.message || 'Failed to save diamond rate');
+    }
+  };
+
+  const onSaveItemCodeMapping = async () => {
+    try {
+      const clarityMap = linesToMap(clarityMapInput);
+      const shapeMap = linesToMap(shapeMapInput);
+      await updateDiamondItemCodeMapping({ clarityMap, shapeMap }).unwrap();
+      toast.success('Item-code mapping updated');
+      await loadDiamond();
+    } catch (error: any) {
+      toast.error(error?.data?.message || 'Failed to update mapping');
     }
   };
 
@@ -300,6 +350,39 @@ export const RateChartsPage = () => {
                         )}
                       </tbody>
                     </table>
+                  </div>
+
+                  <div className="card mt-4">
+                    <div className="card-header d-flex justify-content-between align-items-center">
+                      <h6 className="mb-0">Item Code Mapping</h6>
+                      <button className="btn btn-sm btn-primary" type="button" onClick={onSaveItemCodeMapping} disabled={savingItemCodeMapping || loadingItemCodeMapping}>
+                        {savingItemCodeMapping ? 'Saving...' : 'Save Mapping'}
+                      </button>
+                    </div>
+                    <div className="card-body">
+                      <div className="row g-3">
+                        <div className="col-md-6">
+                          <label className="form-label">Clarity Map (KEY=VALUE per line)</label>
+                          <textarea
+                            className="form-control"
+                            rows={10}
+                            value={clarityMapInput}
+                            onChange={(e) => setClarityMapInput(e.target.value)}
+                            placeholder={'VVS-VS=VVS-VS\nVS-SI=VS-SI\nVVS=VVS\nVS=VS\nSI=SI'}
+                          />
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">Shape Map (KEY=VALUE per line)</label>
+                          <textarea
+                            className="form-control"
+                            rows={10}
+                            value={shapeMapInput}
+                            onChange={(e) => setShapeMapInput(e.target.value)}
+                            placeholder={'RND=ROUND\nROUND=ROUND\nPRN=PRINCESS\nOVL=OVAL'}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="mt-4">

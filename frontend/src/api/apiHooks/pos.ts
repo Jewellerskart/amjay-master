@@ -7,6 +7,8 @@ type PosPayload = {
     status?: string
     amount?: number
     grossAmount?: number
+    taxAmount?: number
+    taxPercent?: number
     commissionTotal?: number
   }
   product?: Record<string, unknown>

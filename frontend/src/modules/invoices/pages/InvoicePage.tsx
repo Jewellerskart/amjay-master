@@ -47,7 +47,24 @@ const getInvoiceCommissionAmount = (invoice: InvoiceListItem) => {
   if (Number.isFinite(configured)) return configured;
   const grossAmount = getInvoiceGrossAmount(invoice);
   const payableAmount = Number(invoice?.amount || 0);
-  return Math.max(0, grossAmount - payableAmount);
+  return Math.max(0, payableAmount - grossAmount);
+};
+
+const getInvoiceTaxAmount = (invoice: InvoiceListItem) => {
+  const configured = Number(invoice?.taxAmount);
+  if (Number.isFinite(configured)) return configured;
+
+  const grossAmount = getInvoiceGrossAmount(invoice);
+  const commissionAmount = getInvoiceCommissionAmount(invoice);
+  const taxableAmount = Math.max(0, grossAmount + commissionAmount);
+  const taxPercent = Number(invoice?.taxPercent);
+
+  if (Number.isFinite(taxPercent) && taxPercent >= 0) {
+    return (taxableAmount * taxPercent) / 100;
+  }
+
+  const payableAmount = Number(invoice?.amount || 0);
+  return Math.max(0, payableAmount - taxableAmount);
 };
 
 const InvoiceTable = ({ title, invoices }: { title: string; invoices: InvoiceListItem[] }) => {
@@ -66,6 +83,7 @@ const InvoiceTable = ({ title, invoices }: { title: string; invoices: InvoiceLis
                 <th>Type</th>
                 <th>Gross</th>
                 <th>Commission</th>
+                <th>Tax</th>
                 <th>Payable</th>
                 <th>Status</th>
                 <th>Created</th>
@@ -74,7 +92,7 @@ const InvoiceTable = ({ title, invoices }: { title: string; invoices: InvoiceLis
             <tbody>
               {invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center text-muted py-4">
+                  <td colSpan={8} className="text-center text-muted py-4">
                     No records in this section.
                   </td>
                 </tr>
@@ -85,6 +103,7 @@ const InvoiceTable = ({ title, invoices }: { title: string; invoices: InvoiceLis
                   const imageUrl = `${(productInfo?.image as string) || (productMeta?.image as string) || ''}`.trim();
                   const grossAmount = getInvoiceGrossAmount(invoice);
                   const commissionAmount = getInvoiceCommissionAmount(invoice);
+                  const taxAmount = getInvoiceTaxAmount(invoice);
                   const payableAmount = Number(invoice?.amount || 0);
                   const breakdown = Array.isArray(invoice?.commissionBreakdown) ? invoice.commissionBreakdown : [];
 
@@ -132,12 +151,13 @@ const InvoiceTable = ({ title, invoices }: { title: string; invoices: InvoiceLis
                           <div>
                             {breakdown.map((item) => (
                               <small className="d-block text-muted" key={`${invoice._id}-${item.componentKey}`}>
-                                {formatComponentLabel(item.componentKey)} {item.rate}% (-Rs {IndNumberFormat(item.deductionAmount || 0)})
+                                {formatComponentLabel(item.componentKey)} {item.rate}% (+Rs {IndNumberFormat(item.deductionAmount || 0)})
                               </small>
                             ))}
                           </div>
                         )}
                       </td>
+                      <td>Rs {IndNumberFormat(taxAmount)}</td>
                       <td>Rs {IndNumberFormat(payableAmount)}</td>
                       <td>{normalizeInvoiceStatus(invoice?.status)}</td>
                       <td>{formatDateTime(invoice?.createdAt)}</td>
@@ -184,6 +204,12 @@ export const InvoicePage = () => {
     return invoices.reduce((sum, invoice) => sum + getInvoiceCommissionAmount(invoice), 0);
   }, [data?.data?.totalCommissionTotal, invoices]);
 
+  const totalTax = useMemo(() => {
+    const responseTotal = Number((data?.data as any)?.totalTaxAmount);
+    if (Number.isFinite(responseTotal)) return responseTotal;
+    return invoices.reduce((sum, invoice) => sum + getInvoiceTaxAmount(invoice), 0);
+  }, [data?.data, invoices]);
+
   const pendingPayable = useMemo(
     () => pendingInvoices.reduce((sum, invoice) => sum + Number(invoice?.amount || 0), 0),
     [pendingInvoices]
@@ -194,7 +220,7 @@ export const InvoicePage = () => {
       <Header />
       <div className="container-fluid">
         <div className="row mb-3">
-          <div className="col-xl-3 col-md-6 mb-2">
+          <div className="col-xl-2 col-md-6 mb-2">
             <div className="card h-100">
               <div className="card-body">
                 <small className="text-muted">Total Gross</small>
@@ -202,11 +228,19 @@ export const InvoicePage = () => {
               </div>
             </div>
           </div>
-          <div className="col-xl-3 col-md-6 mb-2">
+          <div className="col-xl-2 col-md-6 mb-2">
             <div className="card h-100">
               <div className="card-body">
                 <small className="text-muted">Total Commission</small>
                 <h5 className="mb-0">Rs {IndNumberFormat(totalCommission)}</h5>
+              </div>
+            </div>
+          </div>
+          <div className="col-xl-2 col-md-6 mb-2">
+            <div className="card h-100">
+              <div className="card-body">
+                <small className="text-muted">Total Tax</small>
+                <h5 className="mb-0">Rs {IndNumberFormat(totalTax)}</h5>
               </div>
             </div>
           </div>
