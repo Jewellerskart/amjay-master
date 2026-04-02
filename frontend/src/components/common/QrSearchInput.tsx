@@ -55,6 +55,8 @@ export const QrSearchInput = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerRef = useRef<QrScanner | null>(null);
   const scannerOpenRef = useRef(false);
+  const activeStartIdRef = useRef(0);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
 
   const canShowClear = showClearButton && !!onClear && (clearWhenEmptyVisible || Boolean(value));
   const hasSearchAction = showSearchButton && !!onSearch;
@@ -66,7 +68,16 @@ export const QrSearchInput = ({
       scannerRef.current = null;
     }
 
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+
     if (videoRef.current) {
+      const stream = videoRef.current.srcObject;
+      if (stream instanceof MediaStream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
       videoRef.current.srcObject = null;
     }
 
@@ -78,6 +89,8 @@ export const QrSearchInput = ({
   }, [isScannerOpen]);
 
   const closeScanner = useCallback(() => {
+    activeStartIdRef.current += 1;
+    scannerOpenRef.current = false;
     setIsScannerOpen(false);
     stopAndDestroyScanner();
   }, [stopAndDestroyScanner]);
@@ -142,16 +155,22 @@ export const QrSearchInput = ({
   }, []);
 
   const startScanner = useCallback(async () => {
+    const startId = ++activeStartIdRef.current;
+
     if (!navigator?.mediaDevices?.getUserMedia) {
-      setScannerStatus('error');
-      setStatusText('Camera access is not available on this device/browser.');
+      if (startId === activeStartIdRef.current) {
+        setScannerStatus('error');
+        setStatusText('Camera access is not available on this device/browser.');
+      }
       return;
     }
 
     const hostname = window.location.hostname;
     if (!window.isSecureContext && !isLocalDevHost(hostname)) {
-      setScannerStatus('error');
-      setStatusText('Camera scanning requires HTTPS (or localhost).');
+      if (startId === activeStartIdRef.current) {
+        setScannerStatus('error');
+        setStatusText('Camera scanning requires HTTPS (or localhost).');
+      }
       return;
     }
 
@@ -160,6 +179,11 @@ export const QrSearchInput = ({
 
     try {
       const hasCamera = await QrScanner.hasCamera();
+      if (startId !== activeStartIdRef.current || !scannerOpenRef.current) {
+        stopAndDestroyScanner();
+        return;
+      }
+
       if (!hasCamera) {
         setStatusText('No camera found on this device.');
         stopAndDestroyScanner('error');
@@ -174,24 +198,35 @@ export const QrSearchInput = ({
       }
 
       await scanner.start();
-
-      if (!scannerOpenRef.current) {
+      if (startId !== activeStartIdRef.current || !scannerOpenRef.current) {
         stopAndDestroyScanner();
         return;
+      }
+
+      const stream = videoRef.current?.srcObject;
+      if (stream instanceof MediaStream) {
+        cameraStreamRef.current = stream;
       }
 
       setScannerStatus('active');
       setStatusText('Point the camera at a QR code');
     } catch (error: any) {
-      setStatusText(getScannerErrorMessage(error));
-      stopAndDestroyScanner('error');
+      if (startId === activeStartIdRef.current) {
+        setStatusText(getScannerErrorMessage(error));
+        stopAndDestroyScanner('error');
+      } else {
+        stopAndDestroyScanner();
+      }
     }
   }, [createScanner, getScannerErrorMessage, stopAndDestroyScanner]);
 
   useEffect(() => {
     if (!isScannerOpen) return;
+    scannerOpenRef.current = true;
     void startScanner();
     return () => {
+      activeStartIdRef.current += 1;
+      scannerOpenRef.current = false;
       stopAndDestroyScanner();
     };
   }, [isScannerOpen, startScanner, stopAndDestroyScanner]);
